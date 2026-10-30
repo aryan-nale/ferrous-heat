@@ -1,0 +1,3516 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<!--
+================================================================================
+HEAT TREATMENT OF STEEL — METALLURGICAL EXPLORER & SIMULATOR
+Single-file self-contained application.
+
+HOW TO OPEN:
+1. Double-click this `index.html` file in any modern web browser
+   (Google Chrome, Mozilla Firefox, Microsoft Edge, Safari).
+2. Works offline except for the CDN libraries (Tailwind CSS, React 18,
+   ReactDOM 18, Babel Standalone) and Google Fonts.
+3. For local development or live-reloading, you can also run:
+   `npx serve .` or Python's `python -m http.server 8000`.
+
+WHERE TO EXTEND THE SIMULATOR:
+Search for the token:
+// >>> SIMULATOR EXTENSION POINT <<<
+in the PAGES section below. You can plug in advanced Jominy end-quench
+hardenability equations, continuous cooling transformation (CCT) kinetics,
+finite-element thermal diffusion models, or multicomponent alloy systems.
+================================================================================
+-->
+<head>
+<!-- HEAD -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Heat Treatment of Steel — An interactive educational platform and simulator on the metallurgy, phase transformations, and microstructures of steel.">
+  <meta name="theme-color" content="#0b0b0d">
+  <title>Heat Treatment of Steel | Metallurgy Explorer & Simulator</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS Play CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            charcoal: {
+              950: '#060608',
+              900: '#0b0b0d',
+              850: '#111217',
+              800: '#171922',
+              750: '#1e212d',
+              700: '#262a39',
+              600: '#383e53',
+            },
+            furnace: {
+              deep: '#7f1d1d',
+              red: '#b91c1c',
+              flame: '#ea580c',
+              amber: '#f97316',
+              gold: '#fbbf24',
+              glow: '#fff7ed',
+            },
+            quench: {
+              50: '#f0fdfa',
+              300: '#7dd3fc',
+              400: '#38bdf8',
+              500: '#0ea5e9',
+              600: '#0284c7',
+            },
+            steel: {
+              100: '#f1f5f9',
+              200: '#e2e8f0',
+              300: '#cbd5e1',
+              400: '#94a3b8',
+              500: '#64748b',
+              600: '#475569',
+              700: '#334155',
+              800: '#1e293b',
+              900: '#0f172a',
+            }
+          },
+          fontFamily: {
+            display: ['Oswald', 'Impact', 'sans-serif'],
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- React 18 + ReactDOM UMD (pinned versions) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+  <!-- Babel Standalone for inline JSX -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+</head>
+
+<body class="bg-charcoal-900 text-steel-200 font-sans antialiased selection:bg-furnace-amber selection:text-charcoal-950 min-h-screen flex flex-col">
+  <!-- Skip to Content for Accessibility -->
+  <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-furnace-amber focus:text-charcoal-950 focus:font-bold focus:rounded focus:outline-none focus:ring-2 focus:ring-white">
+    Skip to main content
+  </a>
+
+  <!-- React Application Container -->
+  <div id="root" class="flex flex-col min-h-screen"></div>
+
+<!-- STYLES -->
+  <style>
+    /* Industrial Furnace Aesthetic & Microstructure Styles */
+    :root {
+      color-scheme: dark;
+    }
+
+    /* Subtle Technical Grid Background */
+    .bg-grid-pattern {
+      background-size: 32px 32px;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    }
+
+    /* Custom Sleek Industrial Scrollbars */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0b0b0d;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #262a39;
+      border-radius: 2px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #ea580c;
+    }
+
+    /* Furnace Pulse & Radiant Glow */
+    @keyframes furnaceGlow {
+      0%, 100% {
+        box-shadow: 0 0 25px -5px rgba(234, 88, 12, 0.35), 0 0 10px -2px rgba(249, 115, 22, 0.2);
+        border-color: rgba(249, 115, 22, 0.4);
+      }
+      50% {
+        box-shadow: 0 0 45px 0px rgba(234, 88, 12, 0.55), 0 0 20px 2px rgba(251, 191, 36, 0.3);
+        border-color: rgba(251, 191, 36, 0.6);
+      }
+    }
+    .animate-furnace-glow {
+      animation: furnaceGlow 4s ease-in-out infinite;
+    }
+
+    /* Steel Gradient Sweep */
+    @keyframes steelSweep {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    .animate-steel-sweep {
+      background-size: 250% 250%;
+      animation: steelSweep 6s ease infinite;
+    }
+
+    /* Rising Heat Embers (CSS Particle Simulation) */
+    .ember-container {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .ember-particle {
+      position: absolute;
+      bottom: -10px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #fff7ed 0%, #fbbf24 40%, #ea580c 80%, transparent 100%);
+      opacity: 0;
+      animation: riseEmber 5s linear infinite;
+    }
+
+    @keyframes riseEmber {
+      0% {
+        transform: translateY(0) translateX(0) scale(0.6);
+        opacity: 0;
+      }
+      15% {
+        opacity: 0.9;
+      }
+      75% {
+        opacity: 0.7;
+      }
+      100% {
+        transform: translateY(-280px) translateX(var(--drift, 20px)) scale(0.1);
+        opacity: 0;
+      }
+    }
+
+    /* Staggered ember particles */
+    .ember-particle:nth-child(1) { left: 12%; width: 4px; height: 4px; animation-duration: 4.2s; animation-delay: 0.2s; --drift: 15px; }
+    .ember-particle:nth-child(2) { left: 24%; width: 5px; height: 5px; animation-duration: 5.5s; animation-delay: 1.1s; --drift: -25px; }
+    .ember-particle:nth-child(3) { left: 38%; width: 3px; height: 3px; animation-duration: 4.8s; animation-delay: 2.3s; --drift: 30px; }
+    .ember-particle:nth-child(4) { left: 52%; width: 6px; height: 6px; animation-duration: 6.2s; animation-delay: 0.7s; --drift: -18px; }
+    .ember-particle:nth-child(5) { left: 66%; width: 4px; height: 4px; animation-duration: 4.5s; animation-delay: 1.8s; --drift: 22px; }
+    .ember-particle:nth-child(6) { left: 78%; width: 5px; height: 5px; animation-duration: 5.8s; animation-delay: 2.9s; --drift: -12px; }
+    .ember-particle:nth-child(7) { left: 88%; width: 3px; height: 3px; animation-duration: 4.0s; animation-delay: 0.4s; --drift: 18px; }
+    .ember-particle:nth-child(8) { left: 45%; width: 5px; height: 5px; animation-duration: 5.1s; animation-delay: 3.4s; --drift: -30px; }
+
+    /* Heat Shimmer Wave */
+    @keyframes heatShimmer {
+      0%, 100% { filter: contrast(105%) brightness(100%); transform: translateY(0); }
+      50% { filter: contrast(115%) brightness(108%); transform: translateY(-1px); }
+    }
+    .heat-shimmer {
+      animation: heatShimmer 2.5s ease-in-out infinite;
+    }
+
+    /* Accessible focus rings */
+    *:focus-visible {
+      outline: 2px solid #f97316;
+      outline-offset: 2px;
+    }
+
+    /* Print styles for Quiz Certificate */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #certificate-modal, #certificate-modal * {
+        visibility: visible;
+      }
+      #certificate-modal {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background: white !important;
+        color: black !important;
+      }
+    }
+
+    /* Disable animations for users with prefers-reduced-motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, ::before, ::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+      .ember-particle { display: none !important; }
+    }
+  </style>
+
+<!-- DATA -->
+  <script type="text/babel">
+    /**
+     * @typedef {Object} ProcessData
+     * @property {string} id
+     * @property {string} name
+     * @property {string} category
+     * @property {string} tagline
+     * @property {string} tempRange
+     * @property {string} soakTime
+     * @property {string} coolingMethod
+     * @property {number} coolingRateSeverity H-value
+     * @property {string} resultingStructure
+     * @property {string} hardnessRange
+     * @property {string} purpose
+     * @property {string[]} keyPoints
+     * @property {string} applications
+     * @property {Array<{t: number, temp: number}>} thermalCycle
+     */
+
+    /**
+     * Complete metallurgical dataset for heat treating processes.
+     * All temperature and microstructural boundaries match ASM Handbook Vol. 4 standards.
+     * @type {ProcessData[]}
+     */
+    const PROCESSES_DATA = [
+      {
+        id: 'full-annealing',
+        name: 'Full Annealing',
+        category: 'Annealing & Normalizing',
+        tagline: 'Equilibrium furnace cooling for maximum softness, machinability, and ductility.',
+        tempRange: '830°C – 880°C (30°C–50°C above A3 for hypoeutectoid; 30°C–50°C above A1 for hypereutectoid)',
+        soakTime: '1 hour per 25 mm (1 inch) of cross-sectional thickness',
+        coolingMethod: 'Slow furnace cooling (10°C–30°C/hr) down to ~500°C, then air cool',
+        coolingRateSeverity: 0.005,
+        resultingStructure: 'Coarse Pearlite + Proeutectoid Ferrite (or Cementite)',
+        hardnessRange: '12 – 18 HRC (120 – 180 HB)',
+        purpose: 'Relieves all internal residual stresses, refines coarse casting/forging grain structures, and maximizes machinability and formability by producing a soft, coarse lamellar pearlite.',
+        keyPoints: [
+          'Austenitizes completely into single-phase γ for hypoeutectoid steels.',
+          'Extreme slow cooling allows carbon atoms maximum time to diffuse into thick, coarse lamellae.',
+          'Lowest tensile strength and yield strength among all thermal treatments, with peak % elongation.'
+        ],
+        applications: 'Heavy forgings, hot-rolled steel bar stock, cast machine housings before machining, deep-drawing blank stock.',
+        thermalCycle: [
+          { t: 0, temp: 20 },
+          { t: 25, temp: 860 },
+          { t: 55, temp: 860 },
+          { t: 140, temp: 500 },
+          { t: 180, temp: 20 }
+        ]
+      },
+      {
+        id: 'normalizing',
+        name: 'Normalizing',
+        category: 'Annealing & Normalizing',
+        tagline: 'Still-air cooling to homogenize grain size and boost toughness over annealing.',
+        tempRange: '850°C – 920°C (55°C above A3 for hypoeutectoid; 50°C above Acm for hypereutectoid)',
+        soakTime: '30 – 60 minutes (until full austenitic transformation and homogenization occur)',
+        coolingMethod: 'Continuous still-air cooling at room temperature (~1.5°C/s)',
+        coolingRateSeverity: 0.02,
+        resultingStructure: 'Fine Pearlite + Uniform Proeutectoid Ferrite network',
+        hardnessRange: '20 – 28 HRC (200 – 260 HB)',
+        purpose: 'Eliminates structural segregation, breaks up coarse dendritic casting grains, dissolves brittle cementite networks in hypereutectoid steels, and delivers a finer pearlite with higher yield strength than full annealing.',
+        keyPoints: [
+          'Cooling in still air undercools austenite further below A1 than furnace cooling, creating shorter diffusion distances.',
+          'Yields much finer interlamellar pearlite spacing, increasing hardness by ~5–10 HRC over annealing.',
+          'Standard benchmark preparatory treatment prior to final hardening and carburizing.'
+        ],
+        applications: 'Structural steel I-beams, automotive forged crankshafts, axle spindles, connecting rods, railway car wheels.',
+        thermalCycle: [
+          { t: 0, temp: 20 },
+          { t: 25, temp: 890 },
+          { t: 50, temp: 890 },
+          { t: 95, temp: 250 },
+          { t: 130, temp: 20 }
+        ]
+      },
+      {
+        id: 'spheroidizing',
+        name: 'Spheroidizing',
+        category: 'Annealing & Normalizing',
+        tagline: 'Prolonged subcritical hold to ball up cementite lamellae for high-carbon machinability.',
+        tempRange: '680°C – 710°C (just below A1 at 727°C) or cyclic oscillation around A1 (700°C–750°C)',
+        soakTime: 'Extended thermal soak: 6 to 24 hours depending on carbon content and stock section',
+        coolingMethod: 'Extremely slow furnace cooling to 600°C, then still air',
+        coolingRateSeverity: 0.003,
+        resultingStructure: 'Spheroidite (rounded Fe3C spheres in continuous α-ferrite matrix)',
+        hardnessRange: '10 – 16 HRC (100 – 160 HB for high-carbon grades)',
+        purpose: 'Transforms sharp, brittle cementite plates (which cause excessive cutting-tool wear) into low-surface-energy spherical globules, providing the highest possible ductility and lowest hardness in high-carbon steels.',
+        keyPoints: [
+          'Driven by interfacial surface energy reduction between Fe3C and ferrite.',
+          'Crucial for high-carbon tool steels (>0.8% C) and bearing steels (AISI 52100) before cold heading or cutting.',
+          'Ideal starting structure for fast, uniform re-austenitizing during induction hardening.'
+        ],
+        applications: 'Bearing rings (AISI 52100), cold-heading wire for high-strength bolts, razor blade stock, wood-cutting chisel blanks.',
+        thermalCycle: [
+          { t: 0, temp: 20 },
+          { t: 20, temp: 705 },
+          { t: 120, temp: 705 },
+          { t: 160, temp: 550 },
+          { t: 180, temp: 20 }
+        ]
+      },
+      {
+        id: 'quenching',
+        name: 'Quenching (Hardening)',
+        category: 'Hardening',
+        tagline: 'Rapid non-equilibrium extraction to freeze carbon in a strained BCT martensite lattice.',
+        tempRange: '810°C – 870°C (30°C–50°C above A3 for hypoeutectoid; 30°C above A1 for hypereutectoid)',
+        soakTime: '15 – 30 minutes per 25 mm thickness to fully dissolve carbon into austenite',
+        coolingMethod: 'Agitated liquid immersion (Water H=1.0, Brine H=2.0, or Quench Oil H=0.35)',
+        coolingRateSeverity: 1.0,
+        resultingStructure: 'As-quenched BCT Martensite (+ Retained Austenite if high carbon)',
+        hardnessRange: '55 – 66 HRC (dependent on carbon wt%: ~65 HRC at 0.60%+ C)',
+        purpose: 'Forces a diffusionless, shear-driven transformation of FCC austenite into body-centered tetragonal (BCT) martensite by cooling faster than the Critical Cooling Rate (CCR), avoiding the pearlite and bainite noses on the CCT diagram.',
+        keyPoints: [
+          'Martensite start (Ms) and finish (Mf) temperatures depend strictly on alloy and carbon content.',
+          'High internal residual stresses and lattice distortion create extreme hardness but near-zero ductility.',
+          'Must ALWAYS be followed immediately by tempering to prevent spontaneous catastrophic quench cracking.'
+        ],
+        applications: 'High-wear excavator teeth, industrial guillotine shears, heavy-duty helical springs, ball bearings, knives.',
+        thermalCycle: [
+          { t: 0, temp: 20 },
+          { t: 25, temp: 845 },
+          { t: 55, temp: 845 },
+          { t: 57, temp: 25 },
+          { t: 80, temp: 20 }
+        ]
+      },
+      {
+        id: 'tempering',
+        name: 'Tempering',
+        category: 'Hardening',
+        tagline: 'Controlled reheating of as-quenched martensite to restore toughness and balance strength.',
+        tempRange: '150°C – 650°C (tailored to required hardness-to-toughness trade-off)',
+        soakTime: '1 to 2 hours per 25 mm thickness followed by calm cooling',
+        coolingMethod: 'Air cooling (or oil quenching for alloy steels prone to temper embrittlement)',
+        coolingRateSeverity: 0.05,
+        resultingStructure: 'Tempered Martensite (submicroscopic transition carbides / fine Fe3C in ferrite)',
+        hardnessRange: '28 – 58 HRC (inversely proportional to tempering temperature)',
+        purpose: 'Relieves intense internal quenching stresses and permits carbon trapped in supersaturated BCT martensite to precipitate into stable, fine carbides, restoring notch toughness and impact resistance.',
+        keyPoints: [
+          'Low-temp (150°C–220°C): Retains high hardness (58–62 HRC), relieves stress, precipitates ε-carbides.',
+          'DANGER ZONE: 250°C–400°C induces Tempered Martensite Embrittlement (TME); impact toughness drops sharply.',
+          'High-temp (500°C–650°C): Produces exceptional yield strength with superior Charpy V-notch toughness (30–40 HRC).'
+        ],
+        applications: 'Drive axles, suspension leaf springs, turbine fasteners, high-speed drill bits, dies, structural aircraft landing gear.',
+        thermalCycle: [
+          { t: 0, temp: 20 },
+          { t: 20, temp: 480 },
+          { t: 75, temp: 480 },
+          { t: 110, temp: 20 }
+        ]
+      },
+      {
+        id: 'austempering',
+        name: 'Austempering',
+        category: 'Isothermal Treatments',
+        tagline: 'Isothermal salt-bath transformation to 100% Bainite with zero quench distortion.',
+        tempRange: 'Austenitize at 840°C–870°C, then quench into molten salt at 260°C – 400°C (above Ms)',
+        soakTime: 'Hold isothermally in salt bath for 30 – 120 minutes until complete bainitic transformation',
+        coolingMethod: 'Isothermal hold in molten nitrate/nitrite salt bath, followed by air cooling to room temp',
+        coolingRateSeverity: 0.45,
+        resultingStructure: 'Lower or Upper Bainite (ductile, non-lamellar aggregate of ferrite & fine carbides)',
+        hardnessRange: '45 – 55 HRC (with exceptionally high impact toughness and no tempering required)',
+        purpose: 'Bypasses the pearlite nose while avoiding the formation of brittle martensite entirely, resulting in high strength with outstanding resistance to impact fatigue and minimal dimensional distortion.',
+        keyPoints: [
+          'Cooling must be fast enough to avoid the pearlite transformation nose before reaching the salt bath temperature.',
+          'Yields Lower Bainite at 260°C–320°C (acicular, higher hardness ~50–55 HRC) or Upper Bainite at 350°C–400°C.',
+          'Completely eliminates the risk of quench cracking; no secondary tempering furnace cycle needed.'
+        ],
+        applications: 'Automotive seatbelt buckles, lawnmower clutch springs, railroad track fasteners, gun receivers, circlips.',
+        thermalCycle: [
+          { t: 0, temp: 20 },
+          { t: 25, temp: 850 },
+          { t: 50, temp: 850 },
+          { t: 53, temp: 320 },
+          { t: 120, temp: 320 },
+          { t: 150, temp: 20 }
+        ]
+      },
+      {
+        id: 'martempering',
+        name: 'Martempering (Marquenching)',
+        category: 'Isothermal Treatments',
+        tagline: 'Interrupted quench to equalize core/surface temperature before uniform martensite growth.',
+        tempRange: 'Austenitize at 840°C–870°C, quench into hot oil/salt at ~200°C–250°C (just above Ms)',
+        soakTime: 'Hold in salt/oil bath ONLY until surface and core temperatures equalize (do not form bainite!)',
+        coolingMethod: 'Quench to just above Ms, equalize, then remove and cool slowly in still air through Ms/Mf',
+        coolingRateSeverity: 0.5,
+        resultingStructure: 'Low-Distortion Martensite (must subsequently be tempered)',
+        hardnessRange: '55 – 63 HRC (as-quenched, before secondary temper)',
+        purpose: 'Minimizes thermal shock, warpage, and quench cracking in complex geometric tooling by eliminating the temperature differential between the surface and center before martensite forms.',
+        keyPoints: [
+          'Because martensite formation involves a 4% volumetric lattice expansion, uniform transformation across the section prevents warpage.',
+          'Requires tight process control: holding too long in the bath starts unwanted isothermal bainite formation.',
+          'Must be followed by a conventional tempering cycle.'
+        ],
+        applications: 'Complex injection molds, precision automotive transmission gears, long slender broaches and reamers.',
+        thermalCycle: [
+          { t: 0, temp: 20 },
+          { t: 25, temp: 850 },
+          { t: 50, temp: 850 },
+          { t: 53, temp: 230 },
+          { t: 75, temp: 230 },
+          { t: 120, temp: 20 }
+        ]
+      },
+      {
+        id: 'case-hardening',
+        name: 'Case Hardening (Carburizing & Nitriding)',
+        category: 'Surface Treatments',
+        tagline: 'Thermochemical diffusion creating a diamond-hard skin with a shock-absorbing tough core.',
+        tempRange: 'Gas Carburizing: 900°C – 950°C (Austenitic) | Gas Nitriding: 500°C – 550°C (Ferritic)',
+        soakTime: 'Carburizing: 2 – 10 hours for 0.5 – 2.0 mm case depth | Nitriding: 10 – 60 hours for 0.1 – 0.5 mm',
+        coolingMethod: 'Carburizing: Quench & temper | Nitriding: Slow furnace cool (zero quench required!)',
+        coolingRateSeverity: 0.8,
+        resultingStructure: 'High-Carbon Martensite case (60–64 HRC) over tough Low-Carbon Ferrite/Pearlite core (30–35 HRC)',
+        hardnessRange: 'Surface: 60 – 65 HRC (or >1000 HV for Nitriding) | Core: 25 – 35 HRC',
+        purpose: 'Provides extreme abrasive wear resistance and high contact-fatigue life on the outer working surface while maintaining maximum toughness and crack arrest in the low-carbon bulk core.',
+        keyPoints: [
+          'Carburizing diffuses carbon into low-carbon steel (0.15–0.25% C) in a methane/CO gas atmosphere at 925°C.',
+          'Nitriding diffuses nascent nitrogen from dissociated ammonia gas at ~520°C into alloy steels containing Cr, Mo, Al.',
+          'Nitriding generates minimal distortion because it operates below A1 without phase transformations or liquid quenching.'
+        ],
+        applications: 'Heavy transmission ring gears, camshaft lobes, piston wrist pins, rock drill bits, turbine splines.',
+        thermalCycle: [
+          { t: 0, temp: 20 },
+          { t: 25, temp: 925 },
+          { t: 100, temp: 925 },
+          { t: 102, temp: 25 },
+          { t: 140, temp: 180 },
+          { t: 170, temp: 20 }
+        ]
+      }
+    ];
+
+    /**
+     * Microstructure Atlas metallurgical records.
+     */
+    const MICROSTRUCTURES_DATA = [
+      {
+        id: 'austenite',
+        name: 'Austenite (γ-Fe)',
+        crystalSystem: 'Face-Centered Cubic (FCC)',
+        carbonSolubility: 'Up to 2.14 wt% C at 1147°C (0.76% C at 727°C eutectoid)',
+        typicalHardness: '~180 – 220 HB (Non-magnetic, soft, ductile)',
+        formationTemp: 'Stable above 727°C (A1 line) up to 1495°C for carbon steels',
+        features: 'Equiaxed polygonal grains with prominent straight annealing twin bands. Non-magnetic, high interstitial solubility.',
+        behavior: 'High ductility, moderate strength, high work-hardening rate. The parent phase for all subsequent quenching transformations.',
+        etching: 'Light etching with twin boundaries visible under alcoholic ferric chloride or concentrated nital.',
+        canvasConfig: { type: 'austenite', baseColor: '#cbd5e1', grainCount: 28, showTwins: true }
+      },
+      {
+        id: 'ferrite',
+        name: 'Ferrite (α-Fe)',
+        crystalSystem: 'Body-Centered Cubic (BCC)',
+        carbonSolubility: 'Max 0.022 wt% C at 727°C (~0.008 wt% C at room temp)',
+        typicalHardness: '70 – 100 HB (Softest iron phase, highly ductile)',
+        formationTemp: 'Precipitates from austenite during slow cooling below A3 (hypoeutectoid)',
+        features: 'Light, clear polygonal grains meeting at 120° triple points. Near-zero interstitial carbon capacity.',
+        behavior: 'Extremely ductile, highly magnetic at room temp, low yield strength, excellent impact energy absorption.',
+        etching: 'Appears white/light cream when etched with 2% Nital solution; grain boundaries etch as thin dark lines.',
+        canvasConfig: { type: 'ferrite', baseColor: '#f1f5f9', grainCount: 36, showTwins: false }
+      },
+      {
+        id: 'cementite',
+        name: 'Cementite (Fe₃C)',
+        crystalSystem: 'Orthorhombic (12 Fe atoms + 4 C atoms per cell)',
+        carbonSolubility: 'Fixed stoichiometric 6.67 wt% C (Intermetallic compound)',
+        typicalHardness: '~68 – 72 HRC (>800 HV, extremely hard and brittle)',
+        formationTemp: 'Formed during cooling below A1 or Acm, or during tempering',
+        features: 'Bright white, hard network along prior austenite grain boundaries or as sharp plates in pearlite.',
+        behavior: 'Zero room-temperature ductility. Provides wear resistance but acts as a stress concentrator if continuous.',
+        etching: 'Remains unattacked and bright white in nital; darkens in boiling sodium picrate etch.',
+        canvasConfig: { type: 'cementite', baseColor: '#ffffff', grainCount: 22, network: true }
+      },
+      {
+        id: 'pearlite',
+        name: 'Pearlite (Eutectoid)',
+        crystalSystem: 'Lamellar composite: 88 wt% α-Ferrite (BCC) + 12 wt% Fe₃C',
+        carbonSolubility: '0.76 wt% Carbon bulk composition',
+        typicalHardness: 'Coarse: 18 – 24 HRC | Fine: 26 – 32 HRC (220 – 300 HB)',
+        formationTemp: 'Formed by cooperative eutectoid decomposition at or just below 727°C',
+        features: 'Alternating lamellar plates (fingerprint-like) of ductile ferrite and hard cementite.',
+        behavior: 'Balanced combination of strength and ductility. Interlamellar spacing determines yield strength via Hall-Petch.',
+        etching: 'Scatters light strongly; appears iridescent/mother-of-pearl under optical microscope, dark etched colonies.',
+        canvasConfig: { type: 'pearlite', baseColor: '#94a3b8', spacing: 'fine', colonies: 24 }
+      },
+      {
+        id: 'bainite-upper',
+        name: 'Upper Bainite',
+        crystalSystem: 'Aggregate of lath-like Ferrite + interlath Cementite particles',
+        carbonSolubility: '0.2 – 0.8 wt% Carbon',
+        typicalHardness: '40 – 48 HRC',
+        formationTemp: 'Isothermal transformation between 350°C and 550°C',
+        features: 'Feathery morphology. Parallel ferrite laths with coarse carbide films aligned parallel to lath boundaries.',
+        behavior: 'Moderate strength but lower notch toughness than lower bainite due to continuous interlath carbide films.',
+        etching: 'Etches darker than pearlite; appears feathery under optical microscopy and SEM.',
+        canvasConfig: { type: 'bainite_upper', baseColor: '#64748b', needles: 55 }
+      },
+      {
+        id: 'bainite-lower',
+        name: 'Lower Bainite',
+        crystalSystem: 'Acicular Ferrite plates with internal intralath Cementite',
+        carbonSolubility: '0.2 – 0.8 wt% Carbon',
+        typicalHardness: '50 – 58 HRC',
+        formationTemp: 'Isothermal transformation between 250°C and 350°C (just above Ms)',
+        features: 'Acicular needle-like plates with very fine carbide precipitates oriented at 55°–60° inside each ferrite plate.',
+        behavior: 'Superb balance of high yield strength, fatigue resistance, and exceptional Charpy impact toughness.',
+        etching: 'Very dark acicular needles resembling tempered martensite.',
+        canvasConfig: { type: 'bainite_lower', baseColor: '#475569', needles: 75 }
+      },
+      {
+        id: 'martensite',
+        name: 'Martensite (As-Quenched)',
+        crystalSystem: 'Body-Centered Tetragonal (BCT, supersaturated Fe-C)',
+        carbonSolubility: 'Equal to parent austenite carbon content (diffusionless shear)',
+        typicalHardness: '60 – 66 HRC (Peak hardness reached at ~0.60 wt% C)',
+        formationTemp: 'Forms athermally between Ms (Martensite Start) and Mf (Martensite Finish)',
+        features: 'Highly strained acicular lath or lenticular plate needles arranged in prior austenite grain packets.',
+        behavior: 'Extremely high tensile strength (>2000 MPa), near-zero elongation, high residual tension, prone to micro-cracking.',
+        etching: 'Etches rapidly into dark, jagged needle bundles with 2% Nital.',
+        canvasConfig: { type: 'martensite', baseColor: '#334155', needleCount: 110 }
+      },
+      {
+        id: 'tempered-martensite',
+        name: 'Tempered Martensite',
+        crystalSystem: 'BCC Ferrite matrix + dispersed submicron Fe₃C / transition carbides',
+        carbonSolubility: 'Matrix holds equilibrium carbon (~0.01%); remainder in carbides',
+        typicalHardness: '30 – 55 HRC (precisely dialed in by tempering temperature)',
+        formationTemp: 'Formed by reheating as-quenched martensite to 200°C – 650°C',
+        features: 'Fine, uniform stippled dispersion of spherical carbide particles within a relaxed ferrite matrix.',
+        behavior: 'The gold standard for engineered structural components: high strength, excellent fatigue endurance, high toughness.',
+        etching: 'Etches uniformly dark grey-brown in nital with no identifiable prior needle boundaries at high tempering.',
+        canvasConfig: { type: 'tempered_martensite', baseColor: '#3f3f46', carbideDensity: 120 }
+      },
+      {
+        id: 'spheroidite',
+        name: 'Spheroidite',
+        crystalSystem: 'Continuous α-Ferrite (BCC) matrix + spherical Fe₃C globules',
+        carbonSolubility: '0.4 – 1.2 wt% Carbon (common in high-carbon tool steels)',
+        typicalHardness: '12 – 18 HRC (Lowest hardness for high-carbon alloys)',
+        formationTemp: 'Prolonged subcritical soaking (~700°C) just below A1 for 10–24 hours',
+        features: 'Distinct rounded globular cementite spheres distributed uniformly within a clear ferrite matrix.',
+        behavior: 'Maximum ductility and minimum hardness in high-carbon steel; optimizes cold-forming and machining life.',
+        etching: 'White ferrite background with dark circular carbide spheres clearly resolved at 400x–1000x.',
+        canvasConfig: { type: 'spheroidite', baseColor: '#e2e8f0', sphereCount: 90 }
+      }
+    ];
+
+    /**
+     * Standard industrial steel grade presets for the simulator.
+     */
+    const STEEL_GRADES = [
+      { id: '1018', name: 'AISI 1018 (Low Carbon)', carbon: 0.18, a3: 880, desc: 'Common structural/carburizing steel' },
+      { id: '1045', name: 'AISI 1045 (Medium Carbon)', carbon: 0.45, a3: 800, desc: 'Machinery shafts, studs, automotive forgings' },
+      { id: '1080', name: 'AISI 1080 (Near-Eutectoid)', carbon: 0.80, a3: 735, desc: 'Spring wire, high-strength cables, cutting edges' },
+      { id: '52100', name: 'AISI 52100 (High-Carbon Alloy)', carbon: 1.00, a3: 790, desc: 'Antifriction ball/roller bearings, precision dies' },
+      { id: '4140', name: 'AISI 4140 (Chromoly Medium Alloy)', carbon: 0.40, a3: 815, desc: 'High-toughness aircraft parts, crankshafts' }
+    ];
+
+    /**
+     * Temperature vs Steel Blacksmith Glow Color Mapping.
+     */
+    const TEMPERATURE_GLOW_SCALE = [
+      { temp: 20, label: 'Cold / Room Temp', hex: '#64748b', desc: 'No radiation' },
+      { temp: 550, label: 'Faint Red / Black Heat', hex: '#7f1d1d', desc: 'First visible glow in dark room; subcritical anneal' },
+      { temp: 650, label: 'Blood Red', hex: '#991b1b', desc: 'Below A1; stress relief temperature' },
+      { temp: 727, label: 'Cherry Red (A1 Eutectoid)', hex: '#dc2626', desc: 'Eutectoid transformation: pearlite dissolution begins' },
+      { temp: 800, label: 'Bright Cherry Red', hex: '#ea580c', desc: 'Hypoeutectoid austenitizing range' },
+      { temp: 880, label: 'Bright Red-Orange (A3)', hex: '#f97316', desc: 'Full austenitization for medium/low carbon' },
+      { temp: 950, label: 'Orange-Yellow', hex: '#fb923c', desc: 'Gas carburizing temperature range' },
+      { temp: 1050, label: 'Light Yellow', hex: '#fde047', desc: 'Forging & heavy homogenization' },
+      { temp: 1200, label: 'White-Hot', hex: '#fffbeb', desc: 'Extreme rolling heat; severe scaling/decarburization risk' }
+    ];
+
+    /**
+     * Comprehensive 15-question quiz bank.
+     */
+    const QUIZ_QUESTIONS = [
+      {
+        id: 1,
+        question: 'What is the precise carbon concentration of the eutectoid point in the binary Iron-Iron Carbide (Fe-Fe₃C) phase diagram?',
+        options: ['0.022 wt% C', '0.76 – 0.77 wt% C', '2.14 wt% C', '4.30 wt% C'],
+        correctIndex: 1,
+        category: 'Phase Diagrams',
+        explanation: 'The eutectoid composition in the binary Fe-Fe₃C system is 0.76–0.77 wt% C at 727°C (A1 line). Below this temperature, austenite decomposes into pearlite (88% ferrite + 12% cementite).'
+      },
+      {
+        id: 2,
+        question: 'Why does Face-Centered Cubic (FCC) Austenite dissolve vastly more carbon (up to 2.14 wt%) than Body-Centered Cubic (BCC) Ferrite (max 0.022 wt%)?',
+        options: [
+          'FCC austenite has a lower density than BCC ferrite.',
+          'FCC octahedral interstitial sites are larger and symmetric, accommodating carbon with much less lattice strain than the tight, non-symmetric BCC interstitial sites.',
+          'BCC ferrite is non-magnetic at room temperature.',
+          'Carbon forms covalent bonds exclusively in the austenite phase.'
+        ],
+        correctIndex: 1,
+        category: 'Crystal Structure',
+        explanation: 'Although BCC has a lower atomic packing factor (0.68 vs 0.74), its interstitial voids are smaller and highly distorted. In FCC austenite, the octahedral interstitial holes (radius ~0.052 nm) accommodate interstitial carbon atoms with significantly less lattice strain.'
+      },
+      {
+        id: 3,
+        question: 'What is the primary thermodynamic driving force and mechanism of the Martensitic transformation during rapid quenching?',
+        options: [
+          'Long-range interstitial diffusion of carbon into grain boundary nodes.',
+          'A diffusionless, cooperative shear displacement of atoms that traps carbon in a supersaturated BCT lattice.',
+          'Eutectic solidification directly from liquid iron.',
+          'Isothermal spinodal decomposition of ferrite.'
+        ],
+        correctIndex: 1,
+        category: 'Martensite Kinetics',
+        explanation: 'Martensitic transformation is military/diffusionless: atoms move cooperatively over sub-atomic distances faster than the speed of sound. Because carbon cannot diffuse away during rapid cooling, it gets trapped in octahedral sites, distorting the BCC lattice into Body-Centered Tetragonal (BCT).'
+      },
+      {
+        id: 4,
+        question: 'Which quench medium exhibits the highest quench severity (Grossmann H-value)?',
+        options: ['Still Mineral Quench Oil (H ≈ 0.3)', 'Still Air (H ≈ 0.02)', 'Agitated Brine / 10% Salt Solution (H ≈ 2.0)', 'Still Water (H ≈ 1.0)'],
+        correctIndex: 2,
+        category: 'Quenching Media',
+        explanation: 'Agitated brine has an H-value of ~2.0 to 5.0. The dissolved salt crystals nucleate micro-explosions upon contact with the hot steel, instantly shattering the insulating vapor blanket (Leidenfrost layer) and maintaining maximum conductive heat transfer.'
+      },
+      {
+        id: 5,
+        question: 'What metallurgical phenomenon occurs when as-quenched martensitic steel is tempered within the critical 250°C to 400°C range?',
+        options: [
+          'Secondary hardening by precipitation of vanadium carbides.',
+          'Tempered Martensite Embrittlement (TME), causing a sharp drop in notched impact toughness.',
+          'Complete recrystallization into equiaxed austenite.',
+          'Austenite twin formation.'
+        ],
+        correctIndex: 1,
+        category: 'Tempering Physics',
+        explanation: 'Tempering in the 250°C–400°C window leads to Tempered Martensite Embrittlement (TME). Decomposition of retained austenite into continuous interlath films of cementite combined with impurity segregation (P, Sb, Sn) severely degrades Charpy impact energy.'
+      },
+      {
+        id: 6,
+        question: 'What is the principal operational difference between Austempering and Martempering?',
+        options: [
+          'Austempering uses water; Martempering uses liquid nitrogen.',
+          'Austempering holds isothermally in a salt bath until 100% Bainite forms; Martempering holds only until surface/core temperatures equalize before air cooling through Ms to form Martensite.',
+          'Austempering operates above 900°C; Martempering operates below 100°C.',
+          'Martempering completely avoids any austenite formation.'
+        ],
+        correctIndex: 1,
+        category: 'Isothermal Treatments',
+        explanation: 'Austempering holds the workpiece at 260°C–400°C until isothermal bainitic transformation finishes (no temper needed). Martempering holds briefly just above Ms to equalize thermal gradients across the part, then cools in air to produce low-distortion martensite (which MUST be tempered).'
+      },
+      {
+        id: 7,
+        question: 'Why does Normalizing produce higher hardness and yield strength than Full Annealing in the same hypoeutectoid steel?',
+        options: [
+          'Normalizing cools in still air, causing greater undercooling (ΔT) and resulting in much finer interlamellar pearlite spacing.',
+          'Normalizing adds nitrogen atoms from the atmosphere into the core.',
+          'Full annealing retains 50% austenite at room temperature.',
+          'Normalizing forms pure cementite.'
+        ],
+        correctIndex: 0,
+        category: 'Annealing vs Normalizing',
+        explanation: 'Cooling in air is faster than slow furnace cooling, causing transformation to occur at a lower temperature. Increased undercooling decreases the diffusion distance for carbon, producing fine pearlite with closely spaced lamellae that resist dislocation movement via the Hall-Petch mechanism.'
+      },
+      {
+        id: 8,
+        question: 'What is the maximum room-temperature hardness attainable in plain carbon steel when 100% as-quenched martensite is achieved?',
+        options: ['~45 HRC', '~52 HRC', '~65 – 67 HRC', '~85 HRC'],
+        correctIndex: 2,
+        category: 'Hardness Benchmarks',
+        explanation: 'As-quenched martensite hardness scales with carbon content up to approximately 0.60 wt% C, where it plateaus at ~65–67 HRC. Additional carbon beyond 0.6% does not increase martensite hardness and increases retained austenite due to depressed Mf.'
+      },
+      {
+        id: 9,
+        question: 'Which heat treatment is specifically designed to maximize machinability and ductility in high-carbon tool steels (e.g. AISI 52100 or W1)?',
+        options: ['Direct Brine Quench', 'Spheroidizing', 'Flame Hardening', 'Cryogenic Quench'],
+        correctIndex: 1,
+        category: 'Tool Steels',
+        explanation: 'Spheroidizing coalesces hard, brittle lamellar cementite plates into rounded, low-aspect-ratio spherical globules embedded in a soft ferrite matrix, maximizing tool life during machining and reducing hardness to ~12–16 HRC.'
+      },
+      {
+        id: 10,
+        question: 'Why does Gas Nitriding cause dramatically less dimensional distortion than conventional Gas Carburizing?',
+        options: [
+          'Nitriding takes place in liquid helium.',
+          'Nitriding is conducted at 500°C–550°C below the A1 temperature in the ferrite phase, requiring no phase transformation or rapid liquid quenching.',
+          'Nitrogen atoms are smaller than helium atoms.',
+          'Nitrided steels never undergo machining.'
+        ],
+        correctIndex: 1,
+        category: 'Surface Engineering',
+        explanation: 'Gas Carburizing occurs at 925°C (austenite region) and requires a drastic oil or water quench. Nitriding operates at ~520°C in the ferritic regime, forming extremely hard alloy nitrides without crystallographic phase changes or liquid quenching stresses.'
+      },
+      {
+        id: 11,
+        question: 'What causes Retained Austenite in high-carbon and alloy steels after water quenching to room temperature (25°C)?',
+        options: [
+          'Carbon lowers the Martensite Finish (Mf) temperature below room temperature (25°C).',
+          'Austenite boils away during quenching.',
+          'The quench was too rapid for martensite to initiate.',
+          'Ferrite dissolves all carbon.'
+        ],
+        correctIndex: 0,
+        category: 'Martensite Kinetics',
+        explanation: 'Carbon and austenite-stabilizing elements (Ni, Mn) strongly depress both Ms and Mf. In steels with >0.7% C, Mf falls below 20°C (often sub-zero), leaving untransformed metastable austenite at room temperature unless treated with sub-zero or liquid nitrogen cryogenics.'
+      },
+      {
+        id: 12,
+        question: 'In the Fe-Fe₃C phase diagram, what does the A3 line represent for a hypoeutectoid steel?',
+        options: [
+          'The upper boundary where proeutectoid ferrite begins transforming into single-phase austenite upon heating.',
+          'The lower line where pearlite decomposes into liquid.',
+          'The temperature where cementite dissolves in cast irons.',
+          'The Curie temperature where iron loses ferromagnetism (770°C).'
+        ],
+        correctIndex: 0,
+        category: 'Phase Diagrams',
+        explanation: 'The A3 line marks the upper critical temperature for hypoeutectoid steels (<0.76% C). Heating above A3 completes the transformation of ferrite + pearlite into 100% single-phase homogeneous austenite (γ).'
+      },
+      {
+        id: 13,
+        question: 'What standard test method is standardized in ASTM A255 to measure the hardenability depth of steels?',
+        options: ['Charpy V-Notch Test', 'Jominy End-Quench Test', 'Brinell Ball Indentation Test', 'Erichsen Cupping Test'],
+        correctIndex: 1,
+        category: 'Testing Standards',
+        explanation: 'ASTM A255 specifies the Jominy End-Quench Test: a standard 1-inch diameter by 4-inch cylindrical bar is austenitized and water-quenched strictly from one flat end face, creating a continuous spectrum of cooling rates along the bar length to measure hardenability.'
+      },
+      {
+        id: 14,
+        question: 'What is the microstructural morphology of Lower Bainite formed isothermally around 300°C?',
+        options: [
+          'Coarse lamellar plates identical to pearlite.',
+          'Acicular needle-like ferrite plates with fine internal carbide precipitates oriented at 55°–60° angles.',
+          'Equiaxed polygonal grains with annealing twins.',
+          'Continuously connected network of eutectic ledeburite.'
+        ],
+        correctIndex: 1,
+        category: 'Microstructures',
+        explanation: 'Lower Bainite forms at lower temperatures where carbon diffusion is sluggish. Carbon precipitates inside the acicular ferrite plates as very fine platelets oriented at ~55°–60° to the plate axis, providing exceptional toughness and high yield strength.'
+      },
+      {
+        id: 15,
+        question: 'What is Decarburization, and why must heat treaters protect steel surfaces in furnaces?',
+        options: [
+          'The loss of carbon from the steel surface due to reaction with oxygen, water vapor, or CO₂ in furnace atmospheres at high temperatures, creating a weak, soft ferrite skin.',
+          'The excessive absorption of diamond particles into the core.',
+          'The transformation of steel into pure graphite.',
+          'The precipitation of hydrogen blisters.'
+        ],
+        correctIndex: 0,
+        category: 'Furnace Atmosphere',
+        explanation: 'At austenitizing temperatures (>800°C), unprotected furnace atmospheres containing O₂, H₂O, or CO₂ react with surface carbon (C + O₂ → CO₂), stripping carbon away and creating a soft, decarburized ferritic skin that dramatically reduces fatigue life and wear resistance.'
+      }
+    ];
+
+    /**
+     * Metallurgy Glossary.
+     */
+    const GLOSSARY_TERMS = [
+      { term: 'A1 Temperature', def: 'The lower critical temperature (727°C) in carbon steel where the eutectoid transformation takes place; austenite decomposes into pearlite upon cooling.' },
+      { term: 'A3 Temperature', def: 'The upper critical temperature for hypoeutectoid steels, above which the alloy is 100% homogeneous austenite.' },
+      { term: 'Acm Temperature', def: 'The phase boundary line for hypereutectoid steels (>0.76% C), representing the limit of carbon solubility in austenite.' },
+      { term: 'BCT (Body-Centered Tetragonal)', def: 'The distorted crystal lattice of martensite, created when carbon atoms are trapped in octahedral sites of the BCC iron cell during rapid cooling.' },
+      { term: 'CCR (Critical Cooling Rate)', def: 'The minimum cooling rate required to suppress pearlite and bainite formation and achieve 100% martensite transformation.' },
+      { term: 'Decarburization', def: 'Loss of carbon from the surface layer of steel as a result of reacting with oxidants at elevated temperatures in furnace atmospheres.' },
+      { term: 'Hardenability', def: 'The relative ease with which steel can form martensite at depth upon quenching; not to be confused with hardness (which depends primarily on carbon wt%).' },
+      { term: 'Grossmann H-Value', def: 'Quantitative measure of quenching severity of a cooling medium (e.g. still air = 0.02, oil = 0.35, water = 1.0, brine = 2.0).' },
+      { term: 'Leidenfrost Phenomenon', def: 'The formation of an insulating vapor blanket surrounding a hot workpiece during liquid quenching, drastically slowing initial heat transfer.' },
+      { term: 'Martensite Start (Ms)', def: 'The temperature at which austenite begins transforming athermally into martensite upon continuous cooling.' },
+      { term: 'Martensite Finish (Mf)', def: 'The temperature at which the martensitic transformation reaches completion upon cooling.' },
+      { term: 'Retained Austenite', def: 'Untransformed austenite remaining at room temperature after quenching, occurring when the alloy Mf temperature is lower than room temperature.' },
+      { term: 'Soaking', def: 'Holding steel at a constant austenitizing temperature for sufficient time to equalize thermal gradients and completely dissolve carbides into solution.' },
+      { term: 'TTT Diagram', def: 'Time-Temperature-Transformation diagram (S-curve or C-curve) showing percentage of phase transformation as a function of time at constant temperature.' },
+      { term: 'CCT Diagram', def: 'Continuous Cooling Transformation diagram, representing phase transformations during non-isothermal continuous cooling conditions typical of industrial quenching.' },
+      { term: 'Tempered Martensite Embrittlement (TME)', def: 'Loss of Charpy impact toughness occurring when carbon steels are tempered in the 250°C to 400°C range.' }
+    ];
+  </script>
+
+<!-- COMPONENTS -->
+  <script type="text/babel">
+    /**
+     * Hand-crafted SVG Icons for Metallurgy Telemetry & UI
+     */
+    const Icons = {
+      Flame: () => (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 16.121A3 3 0 1012.015 11L11 14H9.9z" />
+        </svg>
+      ),
+      Thermometer: () => (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H7a2 2 0 00-2 2v6a5 5 0 0010 0v-6a2 2 0 00-2-2h0a2 2 0 00-2 2v6" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9V3m0 0a2 2 0 012 2v10a4 4 0 11-4 0V5a2 2 0 012-2z" />
+        </svg>
+      ),
+      Crystal: () => (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+        </svg>
+      ),
+      Compare: () => (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+      ),
+      Quiz: () => (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+        </svg>
+      ),
+      Book: () => (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+        </svg>
+      ),
+      Home: () => (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+        </svg>
+      ),
+      Sliders: () => (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+        </svg>
+      ),
+      Menu: () => (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      ),
+      Close: () => (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      ),
+      Check: () => (
+        <svg className="w-5 h-5 text-emerald-400 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+      ),
+      Alert: () => (
+        <svg className="w-5 h-5 text-furnace-amber flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      ),
+      ArrowRight: () => (
+        <svg className="w-4 h-4 ml-1 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+        </svg>
+      ),
+      RotateCcw: () => (
+        <svg className="w-4 h-4 mr-1 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+      )
+    };
+
+    /**
+     * Top Navigation Bar with active highlight and mobile drawer toggle.
+     */
+    function Navbar({ currentRoute }) {
+      const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+
+      // Close mobile menu on Esc key
+      React.useEffect(() => {
+        function handleKeyDown(e) {
+          if (e.key === 'Escape' && mobileMenuOpen) {
+            setMobileMenuOpen(false);
+          }
+        }
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+      }, [mobileMenuOpen]);
+
+      const navLinks = [
+        { hash: '#/home', label: 'Home', icon: Icons.Home },
+        { hash: '#/simulator', label: 'Simulator', icon: Icons.Sliders },
+        { hash: '#/processes', label: 'Processes', icon: Icons.Flame },
+        { hash: '#/microstructure', label: 'Microstructure', icon: Icons.Crystal },
+        { hash: '#/compare', label: 'Compare', icon: Icons.Compare },
+        { hash: '#/quiz', label: 'Quiz', icon: Icons.Quiz },
+        { hash: '#/about', label: 'About / Reference', icon: Icons.Book },
+      ];
+
+      return (
+        <header className="sticky top-0 z-40 bg-charcoal-950/90 backdrop-blur-md border-b border-steel-800">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              
+              {/* Brand Logo */}
+              <a href="#/home" className="flex items-center gap-3 group focus:outline-none focus:ring-1 focus:ring-furnace-amber rounded px-1">
+                <div className="w-9 h-9 rounded bg-gradient-to-br from-furnace-red via-furnace-amber to-furnace-gold flex items-center justify-center text-charcoal-950 shadow-md group-hover:scale-105 transition-transform duration-200">
+                  <Icons.Flame />
+                </div>
+                <div>
+                  <span className="font-display tracking-wider text-xl font-bold uppercase text-white flex items-center gap-1.5">
+                    FERROUS<span className="text-furnace-amber">HEAT</span>
+                  </span>
+                  <span className="hidden sm:block text-[10px] font-mono tracking-widest text-steel-400 uppercase -mt-1">
+                    Steel Metallurgy & Simulator
+                  </span>
+                </div>
+              </a>
+
+              {/* Desktop Navigation Links */}
+              <nav className="hidden lg:flex items-center space-x-1" aria-label="Main Navigation">
+                {navLinks.map((link) => {
+                  const isActive = currentRoute === link.hash || (link.hash === '#/home' && currentRoute === '');
+                  const Icon = link.icon;
+                  return (
+                    <a
+                      key={link.hash}
+                      href={link.hash}
+                      aria-current={isActive ? 'page' : undefined}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                        isActive
+                          ? 'bg-steel-800 text-furnace-amber border-b-2 border-furnace-amber'
+                          : 'text-steel-300 hover:text-white hover:bg-steel-800/60'
+                      }`}
+                    >
+                      <span className={isActive ? 'text-furnace-amber' : 'text-steel-400'}>
+                        <Icon />
+                      </span>
+                      <span>{link.label}</span>
+                    </a>
+                  );
+                })}
+              </nav>
+
+              {/* Telemetry Indicator & Mobile Menu Button */}
+              <div className="flex items-center gap-3">
+                <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded bg-charcoal-850 border border-steel-800 font-mono text-xs">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span className="text-steel-400">A1:</span>
+                  <span className="text-furnace-gold font-semibold">727°C</span>
+                </div>
+
+                {/* Mobile Hamburger Button */}
+                <button
+                  type="button"
+                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                  aria-expanded={mobileMenuOpen}
+                  aria-controls="mobile-navigation"
+                  aria-label={mobileMenuOpen ? 'Close Navigation Menu' : 'Open Navigation Menu'}
+                  className="lg:hidden p-2 rounded bg-steel-850 border border-steel-750 text-steel-300 hover:text-white hover:bg-steel-800 focus:outline-none focus:ring-2 focus:ring-furnace-amber"
+                >
+                  {mobileMenuOpen ? <Icons.Close /> : <Icons.Menu />}
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Mobile Drawer Navigation */}
+          {mobileMenuOpen && (
+            <div id="mobile-navigation" className="lg:hidden fixed inset-x-0 top-16 bg-charcoal-950/98 backdrop-blur-xl border-b border-steel-800 shadow-2xl p-4 transition-all">
+              <nav className="flex flex-col space-y-2" aria-label="Mobile Navigation">
+                {navLinks.map((link) => {
+                  const isActive = currentRoute === link.hash || (link.hash === '#/home' && currentRoute === '');
+                  const Icon = link.icon;
+                  return (
+                    <a
+                      key={link.hash}
+                      href={link.hash}
+                      onClick={() => setMobileMenuOpen(false)}
+                      aria-current={isActive ? 'page' : undefined}
+                      className={`flex items-center gap-3 px-4 py-3 rounded text-base font-medium transition-colors ${
+                        isActive
+                          ? 'bg-steel-800 text-furnace-amber border-l-4 border-furnace-amber font-semibold'
+                          : 'text-steel-300 hover:text-white hover:bg-steel-850'
+                      }`}
+                    >
+                      <Icon />
+                      <span>{link.label}</span>
+                    </a>
+                  );
+                })}
+              </nav>
+            </div>
+          )}
+        </header>
+      );
+    }
+
+    /**
+     * Industrial Footer Component.
+     */
+    function Footer() {
+      return (
+        <footer className="mt-auto border-t border-steel-800 bg-charcoal-950 py-10 text-steel-400 text-sm font-sans">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div className="space-y-3 md:col-span-2">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded bg-furnace-flame flex items-center justify-center text-charcoal-950">
+                  <Icons.Flame />
+                </div>
+                <span className="font-display font-bold text-white tracking-wider text-base">FERROUS HEAT TREAT LAB</span>
+              </div>
+              <p className="text-xs text-steel-400 max-w-md leading-relaxed">
+                An interactive engineering simulator and educational compendium on the metallurgy, heat treatment kinetics, and microstructures of carbon and alloy steels.
+              </p>
+              <p className="text-[11px] font-mono text-steel-500">
+                Single-file build • Works completely offline after initial asset load • Zero build step required.
+              </p>
+            </div>
+
+            <div>
+              <h4 className="font-mono text-xs uppercase tracking-wider text-steel-300 font-bold mb-3">Quick Modules</h4>
+              <ul className="space-y-1.5 text-xs">
+                <li><a href="#/simulator" className="hover:text-furnace-amber transition-colors">Heat Treat Simulator</a></li>
+                <li><a href="#/processes" className="hover:text-furnace-amber transition-colors">8 Key Processes</a></li>
+                <li><a href="#/microstructure" className="hover:text-furnace-amber transition-colors">Microstructure Canvas Atlas</a></li>
+                <li><a href="#/compare" className="hover:text-furnace-amber transition-colors">Process Comparison Matrix</a></li>
+                <li><a href="#/quiz" className="hover:text-furnace-amber transition-colors">Metallurgical Certification Quiz</a></li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="font-mono text-xs uppercase tracking-wider text-steel-300 font-bold mb-3">Standards & References</h4>
+              <ul className="space-y-1.5 text-xs text-steel-500">
+                <li>ASM Handbook Vol. 4 (Heat Treating)</li>
+                <li>ASTM A255 (Jominy Hardenability)</li>
+                <li>ASTM E112 (Grain Size Estimation)</li>
+                <li>Binary Fe-Fe₃C Phase Kinetics</li>
+              </ul>
+            </div>
+          </div>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 pt-4 border-t border-steel-900 text-center text-xs text-steel-600">
+            FerrousHeat Simulator — Educational Metallurgical Model. Released for academic, engineering, and metallurgy instruction.
+          </div>
+        </footer>
+      );
+    }
+
+    /**
+     * Interactive Temperature-to-Glow Scrubber / Strip
+     */
+    function InteractiveHeatingStrip({ currentTemp, onTempChange }) {
+      const activeColorObj = TEMPERATURE_GLOW_SCALE.reduce((prev, curr) => {
+        return Math.abs(curr.temp - currentTemp) < Math.abs(prev.temp - currentTemp) ? curr : prev;
+      });
+
+      return (
+        <div className="p-4 rounded bg-charcoal-850 border border-steel-800 shadow-inner">
+          <div className="flex items-center justify-between mb-2">
+            <span className="font-mono text-xs text-steel-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Icons.Thermometer /> Steel Blacksmith Radiance Strip
+            </span>
+            <div className="font-mono text-xs flex items-center gap-2">
+              <span className="text-steel-400">Current:</span>
+              <span className="font-bold text-base px-2 py-0.5 rounded" style={{ color: activeColorObj.hex, backgroundColor: '#0b0b0d' }}>
+                {currentTemp}°C
+              </span>
+              <span className="text-steel-400 hidden sm:inline">({activeColorObj.label})</span>
+            </div>
+          </div>
+
+          {/* Color Gradient Track */}
+          <div className="relative h-6 rounded overflow-hidden cursor-pointer"
+               onClick={(e) => {
+                 const rect = e.currentTarget.getBoundingClientRect();
+                 const x = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+                 const temp = Math.round(20 + (x / rect.width) * (1200 - 20));
+                 if (onTempChange) onTempChange(temp);
+               }}>
+            <div 
+              className="absolute inset-0"
+              style={{
+                background: 'linear-gradient(to right, #64748b 0%, #7f1d1d 30%, #991b1b 45%, #dc2626 58%, #ea580c 68%, #f97316 75%, #fb923c 82%, #fde047 92%, #fffbeb 100%)'
+              }}
+            />
+            {/* Position Marker */}
+            <div 
+              className="absolute top-0 bottom-0 w-1 bg-white shadow-lg pointer-events-none transition-all duration-75"
+              style={{ left: `${((currentTemp - 20) / (1200 - 20)) * 100}%` }}
+            />
+          </div>
+
+          <div className="flex justify-between text-[10px] font-mono text-steel-500 mt-1">
+            <span>20°C (Cold)</span>
+            <span>727°C (A1 Eutectoid)</span>
+            <span>912°C (Pure Fe A3)</span>
+            <span>1200°C (White Heat)</span>
+          </div>
+          <p className="text-[11px] text-steel-400 mt-2 font-mono">
+            {activeColorObj.desc}
+          </p>
+        </div>
+      );
+    }
+  </script>
+
+<!-- PAGES -->
+  <script type="text/babel">
+    /**
+     * PAGE 1: HOME (#/home)
+     */
+    function HomePage() {
+      const [stripTemp, setStripTemp] = React.useState(780);
+
+      return (
+        <div className="space-y-16 pb-12">
+          {/* HERO SECTION with animated glowing steel billet & floating embers */}
+          <section className="relative overflow-hidden pt-12 pb-20 border-b border-steel-800 bg-charcoal-950 bg-grid-pattern">
+            {/* CSS Ember particle generator */}
+            <div className="ember-container">
+              <div className="ember-particle"></div>
+              <div className="ember-particle"></div>
+              <div className="ember-particle"></div>
+              <div className="ember-particle"></div>
+              <div className="ember-particle"></div>
+              <div className="ember-particle"></div>
+              <div className="ember-particle"></div>
+              <div className="ember-particle"></div>
+            </div>
+
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+                
+                <div className="lg:col-span-7 space-y-6">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-furnace-flame/15 border border-furnace-amber/30 text-furnace-amber text-xs font-mono tracking-widest uppercase">
+                    <span className="w-2 h-2 rounded-full bg-furnace-amber animate-ping"></span>
+                    Interactive Ferrous Metallurgy Suite
+                  </div>
+                  
+                  <h1 className="font-display text-4xl sm:text-6xl lg:text-7xl font-bold uppercase tracking-tight text-white leading-none">
+                    FORGED IN SCIENCE. <br />
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-furnace-flame via-furnace-amber to-furnace-gold">
+                      TRANSFORMED BY HEAT.
+                    </span>
+                  </h1>
+
+                  <p className="text-steel-300 text-base sm:text-lg leading-relaxed max-w-2xl font-sans">
+                    Master the atomic transformations of carbon steel. Explore how controlled thermal cycles, diffusion kinetics, and rapid quenching convert soft austenite into razor-hard martensite, tough bainite, or ductile pearlite.
+                  </p>
+
+                  <div className="flex flex-wrap gap-4 pt-2">
+                    <a
+                      href="#/simulator"
+                      className="px-6 py-3 rounded bg-gradient-to-r from-furnace-red via-furnace-flame to-furnace-amber text-charcoal-950 font-bold font-sans text-sm tracking-wide shadow-lg hover:brightness-110 active:scale-95 transition-all flex items-center gap-2"
+                    >
+                      <Icons.Sliders /> Launch Heat Treat Simulator
+                    </a>
+                    <a
+                      href="#/processes"
+                      className="px-6 py-3 rounded bg-charcoal-800 border border-steel-700 text-steel-200 font-medium text-sm hover:bg-steel-750 hover:text-white transition-colors flex items-center gap-2"
+                    >
+                      <Icons.Flame /> Explore 8 Key Processes
+                    </a>
+                  </div>
+
+                  {/* Fast Metallurgy Facts Banner */}
+                  <div className="grid grid-cols-3 gap-3 pt-4 border-t border-steel-800/80 font-mono text-xs">
+                    <div>
+                      <span className="block text-steel-500 uppercase text-[10px]">A1 Invariant</span>
+                      <span className="text-white font-bold text-sm">727°C</span>
+                      <span className="block text-steel-400 text-[10px]">Eutectoid point</span>
+                    </div>
+                    <div>
+                      <span className="block text-steel-500 uppercase text-[10px]">Eutectoid Carbon</span>
+                      <span className="text-white font-bold text-sm">0.76 wt% C</span>
+                      <span className="block text-steel-400 text-[10px]">Pearlite phase</span>
+                    </div>
+                    <div>
+                      <span className="block text-steel-500 uppercase text-[10px]">Peak Martensite</span>
+                      <span className="text-white font-bold text-sm">~65 HRC</span>
+                      <span className="block text-steel-400 text-[10px]">At ≥ 0.60% C</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Glowing Steel Billet Visualizer */}
+                <div className="lg:col-span-5 flex flex-col items-center justify-center">
+                  <div className="w-full max-w-md p-6 rounded-xl bg-charcoal-900 border border-steel-800 relative shadow-2xl animate-furnace-glow">
+                    <div className="flex items-center justify-between text-xs font-mono text-steel-400 pb-3 border-b border-steel-800">
+                      <span>FURNACE TELEMETRY</span>
+                      <span className="text-furnace-amber animate-pulse">● HEATING COIL ACTIVE</span>
+                    </div>
+
+                    {/* Animated Hot Ingot Representation */}
+                    <div className="my-6 relative py-8 flex flex-col items-center justify-center">
+                      <div className="w-4/5 h-20 rounded-md bg-gradient-to-r from-furnace-red via-furnace-flame to-furnace-gold shadow-[0_0_50px_rgba(249,115,22,0.6)] animate-steel-sweep relative overflow-hidden flex items-center justify-center">
+                        <div className="heat-shimmer absolute inset-0 opacity-40 bg-[radial-gradient(#fff7ed_1px,transparent_1px)] [background-size:8px_8px]" />
+                        <span className="font-mono text-xs font-extrabold uppercase tracking-widest text-charcoal-950 px-2 py-1 bg-white/70 rounded backdrop-blur-sm">
+                          850°C AUSTENITE (γ)
+                        </span>
+                      </div>
+                      <div className="w-full text-center mt-3 text-xs font-mono text-steel-400">
+                        FCC Lattice Expansion in Progress (+4% Volumetric Change)
+                      </div>
+                    </div>
+
+                    {/* Live Heating Color Scrubber */}
+                    <InteractiveHeatingStrip currentTemp={stripTemp} onTempChange={setStripTemp} />
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </section>
+
+          {/* 4 SCIENCE PILLARS */}
+          <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center max-w-2xl mx-auto mb-12">
+              <h2 className="font-display text-3xl sm:text-4xl font-bold uppercase text-white tracking-wide">
+                The Four Pillars of Thermal Transformation
+              </h2>
+              <p className="text-steel-400 text-sm mt-2">
+                Every heat treatment cycle fundamentally relies on precise control over four sequential thermodynamic stages.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[
+                {
+                  step: '01',
+                  name: 'AUSTENITIZING',
+                  sub: 'Heating & Phase Shift',
+                  icon: Icons.Thermometer,
+                  desc: 'Heating past A1/A3 (727°C–900°C) transforms BCC ferrite into FCC austenite, enabling interstitial dissolution of trapped carbon atoms into homogeneous solution.',
+                  color: 'border-furnace-flame text-furnace-flame'
+                },
+                {
+                  step: '02',
+                  name: 'SOAKING',
+                  sub: 'Equilibrium Homogenization',
+                  icon: Icons.Crystal,
+                  desc: 'Holding at peak temperature allows thermal equilibrium across thick cross-sections, fully dissolving refractory carbides while avoiding excessive grain coarsening.',
+                  color: 'border-furnace-gold text-furnace-gold'
+                },
+                {
+                  step: '03',
+                  name: 'QUENCHING',
+                  sub: 'Rate-Governed Cooling',
+                  icon: Icons.Flame,
+                  desc: 'Cooling speed dictates the outcome: slow cooling yields soft pearlite; rapid liquid cooling past the Critical Cooling Rate traps carbon in strained BCT martensite.',
+                  color: 'border-quench-400 text-quench-400'
+                },
+                {
+                  step: '04',
+                  name: 'TEMPERING',
+                  sub: 'Stress Relief & Toughening',
+                  icon: Icons.Compare,
+                  desc: 'Reheating brittle as-quenched martensite between 150°C and 650°C relieves severe residual tension and precipitates microscopic carbides, restoring toughness.',
+                  color: 'border-emerald-400 text-emerald-400'
+                }
+              ].map((pillar) => {
+                const Icon = pillar.icon;
+                return (
+                  <div key={pillar.step} className="p-6 rounded-lg bg-charcoal-850 border border-steel-800 hover:border-steel-700 transition-all group">
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="font-mono text-2xl font-bold text-steel-600 group-hover:text-white transition-colors">{pillar.step}</span>
+                      <span className={`p-2 rounded bg-charcoal-800 ${pillar.color}`}>
+                        <Icon />
+                      </span>
+                    </div>
+                    <h3 className="font-display text-lg font-bold uppercase text-white tracking-wider">{pillar.name}</h3>
+                    <p className="text-xs font-mono text-steel-400 mb-3">{pillar.sub}</p>
+                    <p className="text-xs text-steel-300 leading-relaxed">{pillar.desc}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* QUICK-JUMP MODULE CARDS */}
+          <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 className="font-display text-2xl font-bold uppercase text-white tracking-wide mb-6">
+              Interactive Lab Modules
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              
+              <a href="#/simulator" className="p-6 rounded-lg bg-charcoal-850 border border-steel-800 hover:border-furnace-amber/60 transition-all group flex flex-col justify-between">
+                <div>
+                  <div className="w-10 h-10 rounded bg-furnace-flame/20 text-furnace-amber flex items-center justify-center mb-4">
+                    <Icons.Sliders />
+                  </div>
+                  <h3 className="font-display text-xl font-bold uppercase text-white group-hover:text-furnace-amber transition-colors">
+                    Heat Treat Simulator
+                  </h3>
+                  <p className="text-xs text-steel-400 mt-2 leading-relaxed">
+                    Tune carbon content (0.1–1.2%), austenitizing temperature, quench medium, and tempering parameters with real-time phase predictions and mechanical output estimates.
+                  </p>
+                </div>
+                <div className="mt-4 pt-3 border-t border-steel-800 flex items-center text-xs font-mono text-furnace-amber">
+                  Launch Interactive Simulator <Icons.ArrowRight />
+                </div>
+              </a>
+
+              <a href="#/processes" className="p-6 rounded-lg bg-charcoal-850 border border-steel-800 hover:border-furnace-amber/60 transition-all group flex flex-col justify-between">
+                <div>
+                  <div className="w-10 h-10 rounded bg-furnace-red/20 text-furnace-red flex items-center justify-center mb-4">
+                    <Icons.Flame />
+                  </div>
+                  <h3 className="font-display text-xl font-bold uppercase text-white group-hover:text-furnace-amber transition-colors">
+                    Processes Compendium
+                  </h3>
+                  <p className="text-xs text-steel-400 mt-2 leading-relaxed">
+                    Full Annealing, Normalizing, Spheroidizing, Quenching, Tempering, Austempering, Martempering, and Case Hardening with thermal curves and applications.
+                  </p>
+                </div>
+                <div className="mt-4 pt-3 border-t border-steel-800 flex items-center text-xs font-mono text-furnace-amber">
+                  Review 8 Key Processes <Icons.ArrowRight />
+                </div>
+              </a>
+
+              <a href="#/microstructure" className="p-6 rounded-lg bg-charcoal-850 border border-steel-800 hover:border-quench-400/60 transition-all group flex flex-col justify-between">
+                <div>
+                  <div className="w-10 h-10 rounded bg-quench-500/20 text-quench-400 flex items-center justify-center mb-4">
+                    <Icons.Crystal />
+                  </div>
+                  <h3 className="font-display text-xl font-bold uppercase text-white group-hover:text-quench-400 transition-colors">
+                    Microstructure Canvas Atlas
+                  </h3>
+                  <p className="text-xs text-steel-400 mt-2 leading-relaxed">
+                    Procedural high-resolution metallography simulator: view Austenite, Ferrite, Pearlite, Bainite, Martensite, and Spheroidite with 100x–1000x zoom and grain boundary toggles.
+                  </p>
+                </div>
+                <div className="mt-4 pt-3 border-t border-steel-800 flex items-center text-xs font-mono text-quench-400">
+                  Inspect Microstructures <Icons.ArrowRight />
+                </div>
+              </a>
+
+              <a href="#/compare" className="p-6 rounded-lg bg-charcoal-850 border border-steel-800 hover:border-furnace-amber/60 transition-all group flex flex-col justify-between">
+                <div>
+                  <div className="w-10 h-10 rounded bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-4">
+                    <Icons.Compare />
+                  </div>
+                  <h3 className="font-display text-xl font-bold uppercase text-white group-hover:text-furnace-amber transition-colors">
+                    Comparison Matrix
+                  </h3>
+                  <p className="text-xs text-steel-400 mt-2 leading-relaxed">
+                    Select 2 or 3 heat treatments to contrast hardness, tensile strength, toughness, cooling severity, distortion risk, and cost side-by-side.
+                  </p>
+                </div>
+                <div className="mt-4 pt-3 border-t border-steel-800 flex items-center text-xs font-mono text-furnace-amber">
+                  Compare Treatments <Icons.ArrowRight />
+                </div>
+              </a>
+
+              <a href="#/quiz" className="p-6 rounded-lg bg-charcoal-850 border border-steel-800 hover:border-furnace-amber/60 transition-all group flex flex-col justify-between">
+                <div>
+                  <div className="w-10 h-10 rounded bg-amber-500/20 text-amber-400 flex items-center justify-center mb-4">
+                    <Icons.Quiz />
+                  </div>
+                  <h3 className="font-display text-xl font-bold uppercase text-white group-hover:text-furnace-amber transition-colors">
+                    Certification Quiz
+                  </h3>
+                  <p className="text-xs text-steel-400 mt-2 leading-relaxed">
+                    Test your knowledge with 10 randomly selected rigorous metallurgy questions, instant scientific feedback, and a printable Certificate of Completion.
+                  </p>
+                </div>
+                <div className="mt-4 pt-3 border-t border-steel-800 flex items-center text-xs font-mono text-furnace-amber">
+                  Start Metallurgy Quiz <Icons.ArrowRight />
+                </div>
+              </a>
+
+              <a href="#/about" className="p-6 rounded-lg bg-charcoal-850 border border-steel-800 hover:border-furnace-amber/60 transition-all group flex flex-col justify-between">
+                <div>
+                  <div className="w-10 h-10 rounded bg-purple-500/20 text-purple-400 flex items-center justify-center mb-4">
+                    <Icons.Book />
+                  </div>
+                  <h3 className="font-display text-xl font-bold uppercase text-white group-hover:text-furnace-amber transition-colors">
+                    About & Fe-C Reference
+                  </h3>
+                  <p className="text-xs text-steel-400 mt-2 leading-relaxed">
+                    Comprehensive equilibrium phase diagrams, TTT/CCT fundamentals, ASTM standards, an interactive 16-term metallurgy glossary, and simulator extension guide.
+                  </p>
+                </div>
+                <div className="mt-4 pt-3 border-t border-steel-800 flex items-center text-xs font-mono text-furnace-amber">
+                  Open Reference Library <Icons.ArrowRight />
+                </div>
+              </a>
+
+            </div>
+          </section>
+        </div>
+      );
+    }
+
+    /**
+     * PAGE 2: SIMULATOR (#/simulator)
+     */
+    function SimulatorPage() {
+      // Simulator State Controls
+      const [carbon, setCarbon] = React.useState(0.45); // wt% C
+      const [austTemp, setAustTemp] = React.useState(850); // °C
+      const [soakTime, setSoakTime] = React.useState(45); // min
+      const [quenchMedium, setQuenchMedium] = React.useState('water'); // furnace, air, oil, water, brine
+      const [temperingTemp, setTemperingTemp] = React.useState(300); // 0 = None, 150-650
+      const [hasTempering, setHasTempering] = React.useState(true);
+
+      // Apply preset steel grade
+      function handleGradePreset(gradeId) {
+        const found = STEEL_GRADES.find(g => g.id === gradeId);
+        if (found) {
+          setCarbon(found.carbon);
+          setAustTemp(found.a3 + 40); // 40°C above critical
+        }
+      }
+
+      // =======================================================================
+      // >>> SIMULATOR EXTENSION POINT <<<
+      // To integrate advanced finite element analysis (FEA), Jominy end-quench
+      // hardenability curves (ASTM A255), continuous cooling transformation
+      // (CCT) kinetics, or multi-element alloy coefficients (Mn, Cr, Mo, Ni, V),
+      // attach your mathematical solver hooks and custom state reducers here.
+      // =======================================================================
+
+      // Metallurgical Calculations
+      const A1 = 727;
+      // Calculate A3 or Acm based on carbon content
+      const criticalTemp = carbon <= 0.76
+        ? Math.round(912 - (912 - 727) * (carbon / 0.76)) // A3 curve
+        : Math.round(727 + 305 * (carbon - 0.76)); // Acm curve
+      const criticalLabel = carbon <= 0.76 ? 'A3' : 'Acm';
+
+      // Martensite start (Andrews empirical model: Ms ≈ 539 - 423*C)
+      const Ms = Math.round(539 - 423 * carbon);
+      const Mf = Math.round(Ms - 215);
+
+      // Quench media severity parameters
+      const mediaSeverities = {
+        furnace: { h: 0.005, name: 'Furnace Cool', rate: 0.005, label: 'Very Slow (~20°C/hr)' },
+        air:     { h: 0.02,  name: 'Still Air',    rate: 1.5,   label: 'Moderate (~1.5°C/s)' },
+        oil:     { h: 0.35,  name: 'Quench Oil',   rate: 55,    label: 'Fast (~55°C/s)' },
+        water:   { h: 1.0,   name: 'Agitated Water', rate: 220, label: 'Rapid (~220°C/s)' },
+        brine:   { h: 2.0,   name: 'Agitated Brine', rate: 450, label: 'Drastic (~450°C/s)' }
+      };
+      const activeMedia = mediaSeverities[quenchMedium];
+
+      // Approximate critical cooling rate (CCR) in °C/s for plain carbon steels
+      // CCR drops as carbon approaches eutectoid (~150°C/s at 0.8% C, ~500°C/s at 0.3% C)
+      const CCR = Math.round(1000 * Math.pow(10, -1.2 * carbon));
+
+      // Phase Prediction Logic
+      let predictedPhase = '';
+      let asQuenchedHRC = 15;
+      let finalHRC = 15;
+      let tensileStrength = 450;
+      let yieldStrength = 300;
+      let qualitativeToughness = 'Moderate';
+      let retainedAustenite = 0;
+      let warnings = [];
+
+      // Check Austenitizing Condition
+      if (austTemp < A1) {
+        warnings.push({
+          type: 'danger',
+          text: `Subcritical Heating: Austenitizing temperature (${austTemp}°C) is below A1 (727°C). No austenite forms; microstructure remains unhardened (only stress-relief occurs).`
+        });
+        predictedPhase = 'Unaltered Ferrite + Pearlite (Subcritical Annealed)';
+        asQuenchedHRC = Math.round(12 + carbon * 15);
+        finalHRC = asQuenchedHRC;
+        tensileStrength = Math.round(350 + carbon * 350);
+        yieldStrength = Math.round(tensileStrength * 0.65);
+        qualitativeToughness = 'High';
+      } else if (austTemp < criticalTemp) {
+        warnings.push({
+          type: 'warning',
+          text: `Intercritical Heating: Heated between A1 and ${criticalLabel} (${criticalTemp}°C). Incomplete austenitization will produce a soft dual-phase ferrite-martensite mixture with reduced hardenability.`
+        });
+        predictedPhase = 'Dual-Phase (Ferrite + Undissolved Carbides + Martensite)';
+        asQuenchedHRC = Math.round(30 + carbon * 25);
+        finalHRC = asQuenchedHRC;
+      } else {
+        // Full Austenitization reached
+        if (quenchMedium === 'furnace') {
+          predictedPhase = carbon < 0.76 ? 'Coarse Pearlite + Proeutectoid Ferrite' : 'Coarse Pearlite + Proeutectoid Cementite';
+          asQuenchedHRC = Math.round(14 + carbon * 12);
+          finalHRC = asQuenchedHRC;
+          tensileStrength = Math.round(420 + carbon * 400);
+          yieldStrength = Math.round(tensileStrength * 0.60);
+          qualitativeToughness = 'Very High';
+        } else if (quenchMedium === 'air') {
+          predictedPhase = carbon < 0.76 ? 'Fine Pearlite + Network Ferrite' : 'Fine Pearlite + Intergranular Cementite';
+          asQuenchedHRC = Math.round(20 + carbon * 16);
+          finalHRC = asQuenchedHRC;
+          tensileStrength = Math.round(550 + carbon * 480);
+          yieldStrength = Math.round(tensileStrength * 0.68);
+          qualitativeToughness = 'High';
+        } else {
+          // Liquid Quenches (Oil, Water, Brine)
+          if (activeMedia.rate >= CCR) {
+            // 100% Martensite
+            // Maximum hardness follows empirical carbon relation: ~30 + 50*sqrt(C), capped at ~66 HRC
+            asQuenchedHRC = Math.min(66, Math.round(30 + 46 * Math.sqrt(carbon)));
+            
+            // Retained Austenite if Mf is below room temperature (25°C)
+            if (Mf < 25) {
+              retainedAustenite = Math.min(30, Math.round((25 - Mf) * 0.12));
+            }
+
+            if (retainedAustenite > 5) {
+              predictedPhase = `As-Quenched Martensite + ${retainedAustenite}% Retained Austenite`;
+            } else {
+              predictedPhase = '100% As-Quenched BCT Martensite';
+            }
+
+            // High carbon + rapid water/brine quench cracking risk
+            if (carbon >= 0.40 && (quenchMedium === 'water' || quenchMedium === 'brine')) {
+              warnings.push({
+                type: 'danger',
+                text: `Quench Cracking Hazard: Quenching ${carbon.toFixed(2)}% C steel in ${activeMedia.name} creates severe thermal gradients and localized volume expansion (+4%). High risk of catastrophic cracking! Quench oil or martempering is strongly recommended.`
+              });
+            }
+
+            // Apply Tempering
+            if (hasTempering && temperingTemp > 100) {
+              if (temperingTemp >= 250 && temperingTemp <= 400) {
+                warnings.push({
+                  type: 'warning',
+                  text: `Tempered Martensite Embrittlement (TME) Zone: Tempering between 250°C and 400°C precipitates interlath cementite films, causing a severe drop in Charpy notch toughness!`
+                });
+                qualitativeToughness = 'Low (TME Embrittlement)';
+              } else if (temperingTemp > 400) {
+                qualitativeToughness = 'Very High';
+              } else {
+                qualitativeToughness = 'Moderate';
+              }
+
+              // Tempering hardness drop calculation
+              const deltaT = temperingTemp - 150;
+              const hardnessDrop = Math.max(0, Math.round(deltaT * 0.065));
+              finalHRC = Math.max(24, asQuenchedHRC - hardnessDrop);
+              predictedPhase = `Tempered Martensite (Carbide dispersion in α-Fe)`;
+              tensileStrength = Math.round(finalHRC * 33 + 220);
+              yieldStrength = Math.round(tensileStrength * 0.88);
+            } else {
+              finalHRC = asQuenchedHRC;
+              qualitativeToughness = 'Extremely Brittle';
+              tensileStrength = Math.round(finalHRC * 35 + 200);
+              yieldStrength = Math.round(tensileStrength * 0.95);
+              warnings.push({
+                type: 'info',
+                text: 'Untempered Martensite: High internal lattice strains present. Components without immediate tempering are prone to delayed spontaneous cracking.'
+              });
+            }
+
+          } else {
+            // Insufficient cooling rate: mixed structure (Martensite + Bainite / Pearlite)
+            asQuenchedHRC = Math.round(35 + carbon * 25);
+            finalHRC = asQuenchedHRC;
+            predictedPhase = 'Mixed Microstructure (Martensite + Upper Bainite + Fine Pearlite)';
+            tensileStrength = Math.round(finalHRC * 30 + 200);
+            yieldStrength = Math.round(tensileStrength * 0.72);
+            qualitativeToughness = 'Moderate';
+            warnings.push({
+              type: 'info',
+              text: `Cooling rate of ${activeMedia.name} (~${activeMedia.rate}°C/s) did not fully exceed the Critical Cooling Rate (${CCR}°C/s). Incomplete hardening resulted in non-martensitic products.`
+            });
+          }
+        }
+      }
+
+      // Check Grain Coarsening
+      if (austTemp >= 1000) {
+        warnings.push({
+          type: 'warning',
+          text: `Excessive Austenitizing Temperature (${austTemp}°C): Rapid prior austenite grain growth occurs above 1000°C, degrading final fracture toughness (Hall-Petch penalty).`
+        });
+      }
+
+      return (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+          
+          {/* Header */}
+          <div className="border-b border-steel-800 pb-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h1 className="font-display text-3xl sm:text-4xl font-bold uppercase tracking-wider text-white flex items-center gap-2">
+                  <Icons.Sliders /> Heat Treatment Simulator
+                </h1>
+                <p className="text-steel-400 text-xs sm:text-sm mt-1">
+                  Virtual metallurgical furnace & quench tank. Predicts phase transformations, hardness, and mechanical yield based on carbon thermodynamics.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono text-steel-400 uppercase">Presets:</span>
+                {STEEL_GRADES.map(g => (
+                  <button
+                    key={g.id}
+                    onClick={() => handleGradePreset(g.id)}
+                    className="px-2 py-1 rounded bg-charcoal-800 border border-steel-700 text-xs font-mono text-steel-200 hover:text-white hover:border-furnace-amber transition-colors"
+                  >
+                    {g.id}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Grid: Controls (Left) and Live Readouts / Graph (Right) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            {/* CONTROL PANEL */}
+            <div className="lg:col-span-5 space-y-6 bg-charcoal-850 p-6 rounded-lg border border-steel-800 shadow-xl">
+              <h2 className="font-mono text-xs uppercase tracking-wider text-steel-300 font-bold border-b border-steel-800 pb-2 flex items-center justify-between">
+                <span>Furnace Controls</span>
+                <span className="text-[10px] text-furnace-amber">● ONLINE</span>
+              </h2>
+
+              {/* Carbon Content Slider */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-xs font-mono">
+                  <label htmlFor="carbon-slider" className="text-steel-300 font-semibold">Carbon Content (wt% C):</label>
+                  <span className="text-furnace-gold font-bold text-sm">{carbon.toFixed(2)} %</span>
+                </div>
+                <input
+                  id="carbon-slider"
+                  type="range"
+                  min="0.10"
+                  max="1.20"
+                  step="0.01"
+                  value={carbon}
+                  onChange={(e) => setCarbon(parseFloat(e.target.value))}
+                  className="w-full accent-furnace-amber h-2 bg-charcoal-900 rounded-lg cursor-pointer"
+                />
+                <div className="flex justify-between text-[10px] font-mono text-steel-500">
+                  <span>0.10% (Low C)</span>
+                  <span>0.76% (Eutectoid)</span>
+                  <span>1.20% (High C)</span>
+                </div>
+              </div>
+
+              {/* Austenitizing Temperature Slider */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-xs font-mono">
+                  <label htmlFor="temp-slider" className="text-steel-300 font-semibold">Austenitizing Temp (°C):</label>
+                  <span className="text-furnace-amber font-bold text-sm">{austTemp} °C</span>
+                </div>
+                <input
+                  id="temp-slider"
+                  type="range"
+                  min="700"
+                  max="1100"
+                  step="5"
+                  value={austTemp}
+                  onChange={(e) => setAustTemp(parseInt(e.target.value))}
+                  className="w-full accent-furnace-amber h-2 bg-charcoal-900 rounded-lg cursor-pointer"
+                />
+                <div className="flex justify-between text-[10px] font-mono text-steel-500">
+                  <span>700°C</span>
+                  <span className="text-furnace-gold font-bold">A1: 727°C</span>
+                  <span className="text-furnace-flame font-bold">{criticalLabel}: {criticalTemp}°C</span>
+                  <span>1100°C</span>
+                </div>
+              </div>
+
+              {/* Soak Time Slider */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-xs font-mono">
+                  <label htmlFor="soak-slider" className="text-steel-300 font-semibold">Soak Time (minutes):</label>
+                  <span className="text-white font-bold">{soakTime} min</span>
+                </div>
+                <input
+                  id="soak-slider"
+                  type="range"
+                  min="10"
+                  max="120"
+                  step="5"
+                  value={soakTime}
+                  onChange={(e) => setSoakTime(parseInt(e.target.value))}
+                  className="w-full accent-furnace-amber h-2 bg-charcoal-900 rounded-lg cursor-pointer"
+                />
+                <div className="flex justify-between text-[10px] font-mono text-steel-500">
+                  <span>10 min</span>
+                  <span>60 min (1 hr)</span>
+                  <span>120 min</span>
+                </div>
+              </div>
+
+              {/* Quench Medium Selector */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-mono text-steel-300 font-semibold">Quench Cooling Medium:</label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs font-mono">
+                  {[
+                    { id: 'furnace', name: 'Furnace', h: 'H=0.005' },
+                    { id: 'air',     name: 'Still Air', h: 'H=0.02' },
+                    { id: 'oil',     name: 'Quench Oil', h: 'H=0.35' },
+                    { id: 'water',   name: 'Water', h: 'H=1.0' },
+                    { id: 'brine',   name: 'Brine 10%', h: 'H=2.0' }
+                  ].map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setQuenchMedium(m.id)}
+                      className={`p-2 rounded border text-left transition-colors ${
+                        quenchMedium === m.id
+                          ? 'bg-quench-500/20 border-quench-400 text-quench-400 font-bold'
+                          : 'bg-charcoal-900 border-steel-750 text-steel-400 hover:text-white hover:border-steel-600'
+                      }`}
+                    >
+                      <div className="text-xs">{m.name}</div>
+                      <div className="text-[10px] text-steel-500">{m.h}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Tempering Controls */}
+              <div className="space-y-2 pt-2 border-t border-steel-800">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-mono text-steel-300 font-semibold flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={hasTempering}
+                      onChange={(e) => setHasTempering(e.target.checked)}
+                      className="rounded bg-charcoal-900 border-steel-700 text-furnace-amber focus:ring-furnace-amber"
+                    />
+                    Include Secondary Tempering
+                  </label>
+                  {hasTempering && (
+                    <span className="text-xs font-mono text-emerald-400 font-bold">{temperingTemp} °C</span>
+                  )}
+                </div>
+
+                {hasTempering && (
+                  <div className="space-y-1">
+                    <input
+                      type="range"
+                      min="150"
+                      max="650"
+                      step="10"
+                      value={temperingTemp}
+                      onChange={(e) => setTemperingTemp(parseInt(e.target.value))}
+                      className="w-full accent-emerald-500 h-2 bg-charcoal-900 rounded-lg cursor-pointer"
+                    />
+                    <div className="flex justify-between text-[10px] font-mono text-steel-500">
+                      <span>150°C (Stress relief)</span>
+                      <span className="text-furnace-amber font-semibold">250-400°C (TME)</span>
+                      <span>650°C (Tough)</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+            </div>
+
+            {/* SIMULATION READOUTS & REAL-TIME THERMAL GRAPH */}
+            <div className="lg:col-span-7 space-y-6">
+              
+              {/* Primary Output Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono">
+                <div className="p-3 rounded bg-charcoal-850 border border-steel-800">
+                  <span className="text-[10px] uppercase text-steel-400 block">Final Hardness</span>
+                  <span className="text-2xl font-bold text-furnace-gold">{finalHRC}</span>
+                  <span className="text-[11px] text-steel-500 ml-1">HRC</span>
+                </div>
+                <div className="p-3 rounded bg-charcoal-850 border border-steel-800">
+                  <span className="text-[10px] uppercase text-steel-400 block">Tensile Strength</span>
+                  <span className="text-2xl font-bold text-white">{tensileStrength}</span>
+                  <span className="text-[11px] text-steel-500 ml-1">MPa</span>
+                </div>
+                <div className="p-3 rounded bg-charcoal-850 border border-steel-800">
+                  <span className="text-[10px] uppercase text-steel-400 block">Yield Strength</span>
+                  <span className="text-2xl font-bold text-quench-400">{yieldStrength}</span>
+                  <span className="text-[11px] text-steel-500 ml-1">MPa</span>
+                </div>
+                <div className="p-3 rounded bg-charcoal-850 border border-steel-800">
+                  <span className="text-[10px] uppercase text-steel-400 block">Toughness Rating</span>
+                  <span className="text-sm font-bold text-emerald-400 block truncate mt-1">{qualitativeToughness}</span>
+                  <span className="text-[10px] text-steel-500">Charpy Impact</span>
+                </div>
+              </div>
+
+              {/* Predicted Microstructure Banner */}
+              <div className="p-4 rounded-lg bg-charcoal-850 border border-steel-800">
+                <span className="font-mono text-xs uppercase tracking-wider text-steel-400 block mb-1">
+                  Predicted Room-Temperature Microstructure:
+                </span>
+                <div className="font-display text-xl font-bold text-furnace-amber uppercase tracking-wide">
+                  {predictedPhase}
+                </div>
+                <div className="flex flex-wrap gap-4 mt-2 text-xs font-mono text-steel-400">
+                  <span>Ms: <strong className="text-white">{Ms}°C</strong></span>
+                  <span>Mf: <strong className="text-white">{Mf < 0 ? `${Mf}°C (Sub-zero)` : `${Mf}°C`}</strong></span>
+                  <span>CCR: <strong className="text-white">~{CCR} °C/s</strong></span>
+                  {retainedAustenite > 0 && (
+                    <span className="text-furnace-amber">Retained Austenite: <strong>{retainedAustenite}%</strong></span>
+                  )}
+                </div>
+              </div>
+
+              {/* Scientific Warnings Box */}
+              {warnings.length > 0 && (
+                <div className="space-y-2">
+                  {warnings.map((w, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-3 rounded text-xs flex items-start gap-3 border ${
+                        w.type === 'danger'
+                          ? 'bg-red-950/40 border-red-800/80 text-red-200'
+                          : w.type === 'warning'
+                          ? 'bg-amber-950/40 border-amber-800/80 text-amber-200'
+                          : 'bg-charcoal-800 border-steel-700 text-steel-300'
+                      }`}
+                    >
+                      <Icons.Alert />
+                      <div className="leading-relaxed">{w.text}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Real-Time SVG Thermal Cycle Curve with A1/A3/Ms Reference Lines */}
+              <div className="p-4 rounded-lg bg-charcoal-850 border border-steel-800">
+                <div className="flex items-center justify-between mb-3 text-xs font-mono text-steel-400">
+                  <span>SIMULATED TEMPERATURE-TIME PROFILE</span>
+                  <span>X: Time | Y: Temperature (°C)</span>
+                </div>
+
+                <div className="relative w-full h-56 bg-charcoal-900 rounded border border-steel-800 p-2 overflow-hidden">
+                  <svg className="w-full h-full" viewBox="0 0 600 220" preserveAspectRatio="none">
+                    {/* Horizontal Reference Lines */}
+                    {/* 1000°C */}
+                    <line x1="40" y1="20" x2="590" y2="20" stroke="#334155" strokeDasharray="3 3" />
+                    <text x="5" y="24" fill="#64748b" fontSize="9" fontFamily="monospace">1000°C</text>
+
+                    {/* A3/Acm line */}
+                    <line
+                      x1="40"
+                      y1={200 - (criticalTemp / 1100) * 190}
+                      x2="590"
+                      y2={200 - (criticalTemp / 1100) * 190}
+                      stroke="#ea580c"
+                      strokeDasharray="4 4"
+                      strokeWidth="1.2"
+                    />
+                    <text x="5" y={204 - (criticalTemp / 1100) * 190} fill="#ea580c" fontSize="9" fontFamily="monospace">
+                      {criticalLabel} ({criticalTemp})
+                    </text>
+
+                    {/* A1 (727°C) line */}
+                    <line
+                      x1="40"
+                      y1={200 - (727 / 1100) * 190}
+                      x2="590"
+                      y2={200 - (727 / 1100) * 190}
+                      stroke="#fbbf24"
+                      strokeDasharray="4 4"
+                      strokeWidth="1.2"
+                    />
+                    <text x="5" y={204 - (727 / 1100) * 190} fill="#fbbf24" fontSize="9" fontFamily="monospace">
+                      A1 (727)
+                    </text>
+
+                    {/* Ms line */}
+                    {Ms > 0 && (
+                      <>
+                        <line
+                          x1="40"
+                          y1={200 - (Ms / 1100) * 190}
+                          x2="590"
+                          y2={200 - (Ms / 1100) * 190}
+                          stroke="#38bdf8"
+                          strokeDasharray="2 2"
+                          strokeWidth="1"
+                        />
+                        <text x="5" y={204 - (Ms / 1100) * 190} fill="#38bdf8" fontSize="9" fontFamily="monospace">
+                          Ms ({Ms})
+                        </text>
+                      </>
+                    )}
+
+                    {/* Thermal Cycle Curve Construction */}
+                    {(() => {
+                      // Coordinates calculation:
+                      // Total width 550 px (from x=45 to x=590)
+                      // Y: 200 = 20°C, 10 = 1100°C
+                      const getY = (t) => 200 - (Math.min(1100, Math.max(20, t)) / 1100) * 190;
+                      
+                      const p0 = { x: 45, y: getY(20) };
+                      const p1 = { x: 120, y: getY(austTemp) }; // Heating ramp
+                      const p2 = { x: 120 + (soakTime / 120) * 130, y: getY(austTemp) }; // Soak hold
+                      
+                      // Quench cooling speed
+                      const quenchDuration = quenchMedium === 'furnace' ? 180 : quenchMedium === 'air' ? 100 : 15;
+                      const p3 = { x: Math.min(420, p2.x + quenchDuration), y: getY(25) };
+
+                      // Tempering curve
+                      let pointsStr = `${p0.x},${p0.y} ${p1.x},${p1.y} ${p2.x},${p2.y} ${p3.x},${p3.y}`;
+
+                      if (hasTempering && temperingTemp > 100) {
+                        const p4 = { x: p3.x + 20, y: getY(temperingTemp) };
+                        const p5 = { x: p4.x + 70, y: getY(temperingTemp) };
+                        const p6 = { x: Math.min(585, p5.x + 40), y: getY(20) };
+                        pointsStr += ` ${p4.x},${p4.y} ${p5.x},${p5.y} ${p6.x},${p6.y}`;
+                      }
+
+                      return (
+                        <>
+                          <polyline
+                            fill="none"
+                            stroke="#f97316"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            points={pointsStr}
+                          />
+                          {/* Key stage node markers */}
+                          <circle cx={p1.x} cy={p1.y} r="3.5" fill="#ea580c" />
+                          <circle cx={p2.x} cy={p2.y} r="3.5" fill="#fbbf24" />
+                          <circle cx={p3.x} cy={p3.y} r="3.5" fill="#38bdf8" />
+                        </>
+                      );
+                    })()}
+                  </svg>
+                </div>
+                <div className="flex justify-between items-center text-[10px] font-mono text-steel-500 mt-2">
+                  <span>Heating Ramp</span>
+                  <span>Austenitizing Soak</span>
+                  <span>Quench Transition</span>
+                  {hasTempering && <span>Tempering Cycle</span>}
+                </div>
+              </div>
+
+              <div className="p-3 bg-charcoal-900 border border-steel-800 rounded text-[11px] font-mono text-steel-400">
+                <strong>Disclaimer:</strong> Physical simulation model based on empirical Andrews Ms relations, Grossmann quench severity, and Hollomon-Jaffe tempering parameters for carbon steels. Actual hardness depends on grain size, trace elements, and section geometry.
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+      );
+    }
+
+    /**
+     * PAGE 3: PROCESSES COMPENDIUM (#/processes)
+     */
+    function ProcessesPage() {
+      const [filterCategory, setFilterCategory] = React.useState('All');
+      const [selectedProcessId, setSelectedProcessId] = React.useState('full-annealing');
+
+      const categories = ['All', 'Annealing & Normalizing', 'Hardening', 'Isothermal Treatments', 'Surface Treatments'];
+
+      const filtered = filterCategory === 'All'
+        ? PROCESSES_DATA
+        : PROCESSES_DATA.filter(p => p.category === filterCategory);
+
+      const activeProcess = PROCESSES_DATA.find(p => p.id === selectedProcessId) || PROCESSES_DATA[0];
+
+      return (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+          
+          <div className="border-b border-steel-800 pb-4">
+            <h1 className="font-display text-3xl sm:text-4xl font-bold uppercase tracking-wider text-white flex items-center gap-2">
+              <Icons.Flame /> Heat Treatment Processes
+            </h1>
+            <p className="text-steel-400 text-xs sm:text-sm mt-1">
+              Industrial thermal cycles, thermal curve geometries, phase transformation kinematics, and engineering applications.
+            </p>
+
+            {/* Filter Chips */}
+            <div className="flex flex-wrap gap-2 mt-4">
+              {categories.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setFilterCategory(cat)}
+                  className={`px-3 py-1 rounded text-xs font-mono transition-colors ${
+                    filterCategory === cat
+                      ? 'bg-furnace-flame text-charcoal-950 font-bold'
+                      : 'bg-charcoal-850 text-steel-300 border border-steel-750 hover:border-steel-600'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            {/* Process List (Left Column) */}
+            <div className="lg:col-span-5 space-y-3">
+              {filtered.map(p => {
+                const isSelected = p.id === activeProcess.id;
+                return (
+                  <div
+                    key={p.id}
+                    onClick={() => setSelectedProcessId(p.id)}
+                    className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                      isSelected
+                        ? 'bg-charcoal-800 border-furnace-amber shadow-md shadow-furnace-amber/10'
+                        : 'bg-charcoal-850 border-steel-800 hover:border-steel-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-display text-lg font-bold uppercase text-white tracking-wide">
+                        {p.name}
+                      </span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-charcoal-900 text-furnace-gold border border-steel-800">
+                        {p.hardnessRange}
+                      </span>
+                    </div>
+                    <p className="text-xs text-steel-400 mt-1 line-clamp-2">{p.tagline}</p>
+                    <div className="mt-2 pt-2 border-t border-steel-800/60 flex items-center justify-between text-[11px] font-mono text-steel-500">
+                      <span>{p.category}</span>
+                      <span>Cooling: {p.coolingRateSeverity >= 0.5 ? 'Rapid' : 'Slow'}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Process Detail View (Right Column) */}
+            <div className="lg:col-span-7 bg-charcoal-850 p-6 rounded-lg border border-steel-800 space-y-6 shadow-xl">
+              
+              <div className="border-b border-steel-800 pb-4">
+                <span className="text-xs font-mono text-furnace-amber uppercase tracking-wider block mb-1">
+                  {activeProcess.category}
+                </span>
+                <h2 className="font-display text-3xl font-bold uppercase text-white">
+                  {activeProcess.name}
+                </h2>
+                <p className="text-sm text-steel-300 mt-1 leading-relaxed">
+                  {activeProcess.tagline}
+                </p>
+              </div>
+
+              {/* Thermal Cycle SVG Diagram */}
+              <div className="p-4 rounded bg-charcoal-900 border border-steel-800">
+                <div className="flex justify-between items-center text-xs font-mono text-steel-400 mb-2">
+                  <span>THERMAL CYCLE PROFILE</span>
+                  <span>T vs Time</span>
+                </div>
+                <div className="h-40 w-full">
+                  <svg className="w-full h-full" viewBox="0 0 500 160" preserveAspectRatio="none">
+                    <line x1="30" y1="140" x2="480" y2="140" stroke="#334155" strokeWidth="1" />
+                    <line x1="30" y1="20" x2="30" y2="140" stroke="#334155" strokeWidth="1" />
+                    <polyline
+                      fill="none"
+                      stroke="#ea580c"
+                      strokeWidth="2.5"
+                      points={activeProcess.thermalCycle.map(pt => `${35 + (pt.t / 200) * 440},${140 - (pt.temp / 1000) * 120}`).join(' ')}
+                    />
+                    {activeProcess.thermalCycle.map((pt, i) => (
+                      <circle
+                        key={i}
+                        cx={35 + (pt.t / 200) * 440}
+                        cy={140 - (pt.temp / 1000) * 120}
+                        r="3"
+                        fill="#fbbf24"
+                      />
+                    ))}
+                    <text x="35" y="15" fill="#64748b" fontSize="9" fontFamily="monospace">1000°C</text>
+                    <text x="440" y="155" fill="#64748b" fontSize="9" fontFamily="monospace">Time →</text>
+                  </svg>
+                </div>
+              </div>
+
+              {/* Process Parameters Table */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
+                <div className="p-3 rounded bg-charcoal-900 border border-steel-800">
+                  <span className="text-steel-400 block text-[10px] uppercase">Temperature Range</span>
+                  <span className="text-white font-bold text-sm block mt-0.5">{activeProcess.tempRange}</span>
+                </div>
+                <div className="p-3 rounded bg-charcoal-900 border border-steel-800">
+                  <span className="text-steel-400 block text-[10px] uppercase">Soak Duration</span>
+                  <span className="text-white font-bold text-sm block mt-0.5">{activeProcess.soakTime}</span>
+                </div>
+                <div className="p-3 rounded bg-charcoal-900 border border-steel-800">
+                  <span className="text-steel-400 block text-[10px] uppercase">Cooling Medium</span>
+                  <span className="text-quench-400 font-bold text-sm block mt-0.5">{activeProcess.coolingMethod}</span>
+                </div>
+                <div className="p-3 rounded bg-charcoal-900 border border-steel-800">
+                  <span className="text-steel-400 block text-[10px] uppercase">Expected Hardness</span>
+                  <span className="text-furnace-gold font-bold text-sm block mt-0.5">{activeProcess.hardnessRange}</span>
+                </div>
+              </div>
+
+              {/* Resulting Microstructure */}
+              <div className="p-3 rounded bg-charcoal-900 border border-steel-800">
+                <span className="text-xs font-mono text-steel-400 uppercase block mb-1">Resulting Microstructure:</span>
+                <span className="text-sm font-bold text-white font-mono">{activeProcess.resultingStructure}</span>
+              </div>
+
+              {/* Scientific Rationale & Key Points */}
+              <div className="space-y-2">
+                <h3 className="font-mono text-xs uppercase tracking-wider text-steel-300 font-bold">
+                  Metallurgical Purpose & Kinetics:
+                </h3>
+                <p className="text-xs text-steel-300 leading-relaxed">
+                  {activeProcess.purpose}
+                </p>
+                <ul className="space-y-1.5 pt-2">
+                  {activeProcess.keyPoints.map((pt, i) => (
+                    <li key={i} className="text-xs text-steel-400 flex items-start gap-2">
+                      <Icons.Check />
+                      <span>{pt}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Industrial Applications */}
+              <div className="p-3 rounded bg-charcoal-900/60 border border-steel-800 text-xs">
+                <span className="font-mono text-steel-400 uppercase text-[10px] block mb-1">Common Industrial Applications:</span>
+                <span className="text-steel-300">{activeProcess.applications}</span>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+      );
+    }
+
+    /**
+     * PAGE 4: MICROSTRUCTURE ATLAS (#/microstructure)
+     * High-fidelity procedural canvas metallography renderer.
+     */
+    function MicrostructurePage() {
+      const [selectedPhaseId, setSelectedPhaseId] = React.useState('pearlite');
+      const [magnification, setMagnification] = React.useState(400); // 100x to 1000x
+      const [showBoundaries, setShowBoundaries] = React.useState(true);
+
+      const activePhase = MICROSTRUCTURES_DATA.find(m => m.id === selectedPhaseId) || MICROSTRUCTURES_DATA[0];
+      const canvasRef = React.useRef(null);
+
+      // Seeded Pseudo-Random Number Generator (PRNG) for deterministic visual stability
+      function createPRNG(seed) {
+        let s = seed >>> 0;
+        return function() {
+          s = (s + 0x6D2B79F5) | 0;
+          let t = Math.imul(s ^ (s >>> 15), 1 | s);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+
+      // Procedural Canvas Metallography Renderer
+      React.useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+
+        // Clear canvas
+        ctx.fillStyle = '#171922';
+        ctx.fillRect(0, 0, width, height);
+
+        const prng = createPRNG(1337);
+        const scaleFactor = magnification / 400; // Normalized to 400x
+
+        // Render based on phase type
+        switch (activePhase.id) {
+          case 'austenite': {
+            // Equiaxed polygonal FCC grains with annealing twins
+            const grainCount = Math.round(18 / scaleFactor);
+            const seeds = [];
+            for (let i = 0; i < grainCount; i++) {
+              seeds.push({
+                x: prng() * width,
+                y: prng() * height,
+                color: `hsl(215, 12%, ${65 + prng() * 15}%)`,
+                hasTwin: prng() > 0.45,
+                twinAngle: prng() * Math.PI
+              });
+            }
+
+            // Voronoi tessellation approximation
+            const imgData = ctx.createImageData(width, height);
+            const data = imgData.data;
+
+            for (let y = 0; y < height; y += 2) {
+              for (let x = 0; x < width; x += 2) {
+                let minDist = Infinity;
+                let secondDist = Infinity;
+                let closest = 0;
+
+                for (let i = 0; i < seeds.length; i++) {
+                  const dx = x - seeds[i].x;
+                  const dy = y - seeds[i].y;
+                  const d = dx * dx + dy * dy;
+                  if (d < minDist) {
+                    secondDist = minDist;
+                    minDist = d;
+                    closest = i;
+                  } else if (d < secondDist) {
+                    secondDist = d;
+                  }
+                }
+
+                // Grain boundary detection
+                const isBoundary = showBoundaries && Math.abs(Math.sqrt(secondDist) - Math.sqrt(minDist)) < 1.5;
+                const brightness = isBoundary ? 30 : (160 + (closest % 5) * 15);
+
+                for (let dy = 0; dy < 2; dy++) {
+                  for (let dx = 0; dx < 2; dx++) {
+                    const idx = ((y + dy) * width + (x + dx)) * 4;
+                    data[idx] = brightness;
+                    data[idx + 1] = brightness + 4;
+                    data[idx + 2] = brightness + 10;
+                    data[idx + 3] = 255;
+                  }
+                }
+              }
+            }
+            ctx.putImageData(imgData, 0, 0);
+
+            // Draw Annealing Twins inside grains
+            if (activePhase.canvasConfig.showTwins) {
+              ctx.lineWidth = 1.2;
+              seeds.forEach(s => {
+                if (s.hasTwin) {
+                  ctx.strokeStyle = 'rgba(71, 85, 105, 0.7)';
+                  ctx.beginPath();
+                  const len = 35 * scaleFactor;
+                  ctx.moveTo(s.x - Math.cos(s.twinAngle) * len, s.y - Math.sin(s.twinAngle) * len);
+                  ctx.lineTo(s.x + Math.cos(s.twinAngle) * len, s.y + Math.sin(s.twinAngle) * len);
+                  ctx.stroke();
+                }
+              });
+            }
+            break;
+          }
+
+          case 'ferrite': {
+            // Light etching, clean polygonal grains with 120° triple junctions
+            const grainCount = Math.round(24 / scaleFactor);
+            const seeds = [];
+            for (let i = 0; i < grainCount; i++) {
+              seeds.push({ x: prng() * width, y: prng() * height });
+            }
+
+            const imgData = ctx.createImageData(width, height);
+            const data = imgData.data;
+
+            for (let y = 0; y < height; y += 2) {
+              for (let x = 0; x < width; x += 2) {
+                let minDist = Infinity;
+                let secondDist = Infinity;
+                let closest = 0;
+
+                for (let i = 0; i < seeds.length; i++) {
+                  const d = (x - seeds[i].x) ** 2 + (y - seeds[i].y) ** 2;
+                  if (d < minDist) {
+                    secondDist = minDist;
+                    minDist = d;
+                    closest = i;
+                  } else if (d < secondDist) {
+                    secondDist = d;
+                  }
+                }
+
+                const isBoundary = showBoundaries && Math.abs(Math.sqrt(secondDist) - Math.sqrt(minDist)) < 1.2;
+                const shade = isBoundary ? 40 : (225 + (closest % 4) * 8);
+
+                for (let dy = 0; dy < 2; dy++) {
+                  for (let dx = 0; dx < 2; dx++) {
+                    const idx = ((y + dy) * width + (x + dx)) * 4;
+                    data[idx] = shade;
+                    data[idx + 1] = shade;
+                    data[idx + 2] = shade + 2;
+                    data[idx + 3] = 255;
+                  }
+                }
+              }
+            }
+            ctx.putImageData(imgData, 0, 0);
+            break;
+          }
+
+          case 'pearlite': {
+            // Pearlite colonies with alternating lamellae plates (ferrite + cementite)
+            ctx.fillStyle = '#cbd5e1';
+            ctx.fillRect(0, 0, width, height);
+
+            const colonyCount = Math.round(14 / Math.sqrt(scaleFactor));
+            const colonies = [];
+            for (let i = 0; i < colonyCount; i++) {
+              colonies.push({
+                x: prng() * width,
+                y: prng() * height,
+                angle: prng() * Math.PI,
+                spacing: (4.5 * scaleFactor)
+              });
+            }
+
+            // Draw parallel stripes per colony
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = Math.max(1, 1.8 * scaleFactor);
+
+            colonies.forEach(col => {
+              const radius = (60 * scaleFactor);
+              ctx.save();
+              ctx.beginPath();
+              ctx.arc(col.x, col.y, radius, 0, Math.PI * 2);
+              ctx.clip();
+
+              const cos = Math.cos(col.angle);
+              const sin = Math.sin(col.angle);
+
+              for (let d = -radius; d <= radius; d += col.spacing) {
+                ctx.beginPath();
+                ctx.moveTo(col.x + cos * d - sin * radius, col.y + sin * d + cos * radius);
+                ctx.lineTo(col.x + cos * d + sin * radius, col.y + sin * d - cos * radius);
+                ctx.stroke();
+              }
+              ctx.restore();
+            });
+
+            // Draw colony boundary outlines
+            if (showBoundaries) {
+              ctx.strokeStyle = 'rgba(15, 23, 42, 0.6)';
+              ctx.lineWidth = 1.5;
+              colonies.forEach(col => {
+                ctx.beginPath();
+                ctx.arc(col.x, col.y, 60 * scaleFactor, 0, Math.PI * 2);
+                ctx.stroke();
+              });
+            }
+            break;
+          }
+
+          case 'martensite': {
+            // Acicular laths and lenticular intersecting needles
+            ctx.fillStyle = '#64748b';
+            ctx.fillRect(0, 0, width, height);
+
+            const needleCount = Math.round(120 * scaleFactor);
+            for (let i = 0; i < needleCount; i++) {
+              const cx = prng() * width;
+              const cy = prng() * height;
+              const length = (25 + prng() * 45) * scaleFactor;
+              const angle = prng() * Math.PI * 2;
+              const thickness = Math.max(1, (1.5 + prng() * 2) * scaleFactor);
+
+              ctx.save();
+              ctx.translate(cx, cy);
+              ctx.rotate(angle);
+
+              // Needle shape (elongated double wedge)
+              ctx.fillStyle = prng() > 0.4 ? '#1e293b' : '#0f172a';
+              ctx.beginPath();
+              ctx.moveTo(-length / 2, 0);
+              ctx.lineTo(0, -thickness);
+              ctx.lineTo(length / 2, 0);
+              ctx.lineTo(0, thickness);
+              ctx.closePath();
+              ctx.fill();
+
+              ctx.restore();
+            }
+            break;
+          }
+
+          case 'bainite-upper':
+          case 'bainite-lower': {
+            // Feathery (upper) or fine acicular (lower) with dispersed carbides
+            ctx.fillStyle = '#475569';
+            ctx.fillRect(0, 0, width, height);
+
+            const isLower = activePhase.id === 'bainite-lower';
+            const count = Math.round((isLower ? 140 : 80) * scaleFactor);
+
+            for (let i = 0; i < count; i++) {
+              const cx = prng() * width;
+              const cy = prng() * height;
+              const length = (20 + prng() * 30) * scaleFactor;
+              const angle = prng() * Math.PI;
+
+              ctx.strokeStyle = isLower ? '#0f172a' : '#1e293b';
+              ctx.lineWidth = Math.max(1, (isLower ? 1.2 : 2.5) * scaleFactor);
+
+              ctx.beginPath();
+              ctx.moveTo(cx - Math.cos(angle) * (length / 2), cy - Math.sin(angle) * (length / 2));
+              ctx.lineTo(cx + Math.cos(angle) * (length / 2), cy + Math.sin(angle) * (length / 2));
+              ctx.stroke();
+
+              // Carbide stipples
+              ctx.fillStyle = '#0f172a';
+              for (let c = 0; c < 4; c++) {
+                const ox = (prng() - 0.5) * length * 0.8;
+                const oy = (prng() - 0.5) * 4;
+                ctx.beginPath();
+                ctx.arc(cx + ox, cy + oy, 0.8 * scaleFactor, 0, Math.PI * 2);
+                ctx.fill();
+              }
+            }
+            break;
+          }
+
+          case 'spheroidite': {
+            // Continuous ferrite matrix with rounded globular cementite spheres
+            ctx.fillStyle = '#e2e8f0';
+            ctx.fillRect(0, 0, width, height);
+
+            const sphereCount = Math.round(110 * scaleFactor);
+            for (let i = 0; i < sphereCount; i++) {
+              const x = prng() * width;
+              const y = prng() * height;
+              const radius = (2.2 + prng() * 4.5) * scaleFactor;
+
+              // Dark spherical particle
+              ctx.fillStyle = '#1e293b';
+              ctx.beginPath();
+              ctx.arc(x, y, radius, 0, Math.PI * 2);
+              ctx.fill();
+
+              // Subtle 3D highlight
+              ctx.fillStyle = '#475569';
+              ctx.beginPath();
+              ctx.arc(x - radius * 0.3, y - radius * 0.3, radius * 0.4, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            break;
+          }
+
+          case 'tempered-martensite': {
+            // Relaxed ferrite matrix with dense submicron carbide dispersion
+            ctx.fillStyle = '#3f3f46';
+            ctx.fillRect(0, 0, width, height);
+
+            const carbideCount = Math.round(280 * scaleFactor);
+            for (let i = 0; i < carbideCount; i++) {
+              const x = prng() * width;
+              const y = prng() * height;
+              const radius = (0.7 + prng() * 1.5) * scaleFactor;
+
+              ctx.fillStyle = '#18181b';
+              ctx.beginPath();
+              ctx.arc(x, y, radius, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            break;
+          }
+
+          case 'cementite': {
+            // Thick intergranular network along grain boundaries
+            ctx.fillStyle = '#475569';
+            ctx.fillRect(0, 0, width, height);
+
+            const grainCount = Math.round(15 / scaleFactor);
+            const seeds = [];
+            for (let i = 0; i < grainCount; i++) {
+              seeds.push({ x: prng() * width, y: prng() * height });
+            }
+
+            const imgData = ctx.createImageData(width, height);
+            const data = imgData.data;
+
+            for (let y = 0; y < height; y += 2) {
+              for (let x = 0; x < width; x += 2) {
+                let minDist = Infinity;
+                let secondDist = Infinity;
+
+                for (let i = 0; i < seeds.length; i++) {
+                  const d = (x - seeds[i].x) ** 2 + (y - seeds[i].y) ** 2;
+                  if (d < minDist) {
+                    secondDist = minDist;
+                    minDist = d;
+                  } else if (d < secondDist) {
+                    secondDist = d;
+                  }
+                }
+
+                const diff = Math.abs(Math.sqrt(secondDist) - Math.sqrt(minDist));
+                // Bright white boundary = cementite network
+                const isCementite = diff < (4 * scaleFactor);
+                const val = isCementite ? 245 : 65;
+
+                for (let dy = 0; dy < 2; dy++) {
+                  for (let dx = 0; dx < 2; dx++) {
+                    const idx = ((y + dy) * width + (x + dx)) * 4;
+                    data[idx] = val;
+                    data[idx + 1] = val;
+                    data[idx + 2] = val;
+                    data[idx + 3] = 255;
+                  }
+                }
+              }
+            }
+            ctx.putImageData(imgData, 0, 0);
+            break;
+          }
+
+          default:
+            break;
+        }
+
+        // Add calibration scale bar on bottom right
+        ctx.fillStyle = 'rgba(11, 11, 13, 0.85)';
+        ctx.fillRect(width - 120, height - 32, 110, 24);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(width - 105, height - 16, 50, 3);
+        ctx.font = '10px monospace';
+        ctx.fillText(`${Math.round(50 / scaleFactor)} µm`, width - 50, height - 14);
+
+      }, [activePhase, magnification, showBoundaries]);
+
+      return (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+          
+          <div className="border-b border-steel-800 pb-4">
+            <h1 className="font-display text-3xl sm:text-4xl font-bold uppercase tracking-wider text-white flex items-center gap-2">
+              <Icons.Crystal /> Microstructure Canvas Atlas
+            </h1>
+            <p className="text-steel-400 text-xs sm:text-sm mt-1">
+              Virtual optical metallography simulator. Procedural crystal morphology rendered from first-principles microstructure kinetics.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            {/* Phase Selector Tabs (Left) */}
+            <div className="lg:col-span-4 space-y-2">
+              <span className="font-mono text-xs uppercase tracking-wider text-steel-400 block mb-2 font-bold">
+                Select Microstructural Constituent:
+              </span>
+              <div className="space-y-1.5">
+                {MICROSTRUCTURES_DATA.map(m => {
+                  const isSelected = m.id === selectedPhaseId;
+                  return (
+                    <button
+                      key={m.id}
+                      onClick={() => setSelectedPhaseId(m.id)}
+                      className={`w-full p-3 rounded-lg border text-left transition-all ${
+                        isSelected
+                          ? 'bg-charcoal-800 border-quench-400 text-white font-bold'
+                          : 'bg-charcoal-850 border-steel-800 text-steel-300 hover:border-steel-700 hover:text-white'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-display tracking-wide">{m.name}</span>
+                        <span className="text-[10px] font-mono text-steel-400">{m.crystalSystem.split(' ')[0]}</span>
+                      </div>
+                      <div className="text-[11px] font-mono text-steel-400 mt-0.5 truncate">
+                        {m.typicalHardness}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Canvas Viewer & Controls (Middle & Right) */}
+            <div className="lg:col-span-8 space-y-6">
+              
+              {/* Microscope Controls Bar */}
+              <div className="p-4 rounded-lg bg-charcoal-850 border border-steel-800 flex flex-wrap items-center justify-between gap-4 font-mono text-xs">
+                {/* Magnification Slider */}
+                <div className="flex items-center gap-3">
+                  <label htmlFor="mag-slider" className="text-steel-300 font-semibold">Magnification:</label>
+                  <input
+                    id="mag-slider"
+                    type="range"
+                    min="100"
+                    max="1000"
+                    step="50"
+                    value={magnification}
+                    onChange={(e) => setMagnification(parseInt(e.target.value))}
+                    className="w-32 accent-quench-400 cursor-pointer"
+                  />
+                  <span className="text-quench-400 font-bold w-14">{magnification}x</span>
+                </div>
+
+                {/* Grain Boundary Toggle */}
+                <label className="flex items-center gap-2 cursor-pointer text-steel-300">
+                  <input
+                    type="checkbox"
+                    checked={showBoundaries}
+                    onChange={(e) => setShowBoundaries(e.target.checked)}
+                    className="rounded bg-charcoal-900 border-steel-700 text-quench-400 focus:ring-quench-400"
+                  />
+                  <span>Highlight Boundaries</span>
+                </label>
+
+                {/* Etchant Label */}
+                <div className="text-steel-500">
+                  Etchant: <span className="text-steel-300">2% Nital</span>
+                </div>
+              </div>
+
+              {/* Procedural Canvas Element */}
+              <div className="relative rounded-lg overflow-hidden border-2 border-steel-750 bg-charcoal-950 shadow-2xl flex items-center justify-center">
+                <canvas
+                  ref={canvasRef}
+                  width={640}
+                  height={420}
+                  className="w-full h-auto max-h-[460px] object-cover"
+                />
+                <div className="absolute top-3 left-3 px-2.5 py-1 rounded bg-charcoal-950/80 backdrop-blur-sm border border-steel-700 font-mono text-xs text-white">
+                  {activePhase.name} • {magnification}x
+                </div>
+              </div>
+
+              {/* Metallurgical Profile Card */}
+              <div className="p-6 rounded-lg bg-charcoal-850 border border-steel-800 space-y-4">
+                <div className="border-b border-steel-800 pb-3 flex justify-between items-start">
+                  <div>
+                    <h3 className="font-display text-2xl font-bold uppercase text-white">
+                      {activePhase.name}
+                    </h3>
+                    <p className="text-xs font-mono text-quench-400 mt-0.5">{activePhase.crystalSystem}</p>
+                  </div>
+                  <span className="px-2.5 py-1 rounded bg-charcoal-900 border border-steel-800 text-xs font-mono text-furnace-gold font-bold">
+                    {activePhase.typicalHardness}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
+                  <div>
+                    <span className="text-steel-400 uppercase text-[10px] block">Carbon Solubility:</span>
+                    <span className="text-white">{activePhase.carbonSolubility}</span>
+                  </div>
+                  <div>
+                    <span className="text-steel-400 uppercase text-[10px] block">Formation Window:</span>
+                    <span className="text-white">{activePhase.formationTemp}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-xs">
+                  <div>
+                    <span className="font-mono text-steel-400 uppercase text-[10px] block">Microscopic Morphology:</span>
+                    <p className="text-steel-300 leading-relaxed mt-0.5">{activePhase.features}</p>
+                  </div>
+                  <div>
+                    <span className="font-mono text-steel-400 uppercase text-[10px] block">Mechanical & Kinetic Behavior:</span>
+                    <p className="text-steel-300 leading-relaxed mt-0.5">{activePhase.behavior}</p>
+                  </div>
+                  <div>
+                    <span className="font-mono text-steel-400 uppercase text-[10px] block">Metallographic Etching:</span>
+                    <p className="text-steel-400 leading-relaxed mt-0.5">{activePhase.etching}</p>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+      );
+    }
+
+    /**
+     * PAGE 5: COMPARE MATRIX (#/compare)
+     */
+    function ComparePage() {
+      const [treatmentA, setTreatmentA] = React.useState('quenching');
+      const [treatmentB, setTreatmentB] = React.useState('austempering');
+      const [treatmentC, setTreatmentC] = React.useState('full-annealing');
+
+      const procA = PROCESSES_DATA.find(p => p.id === treatmentA) || PROCESSES_DATA[3];
+      const procB = PROCESSES_DATA.find(p => p.id === treatmentB) || PROCESSES_DATA[5];
+      const procC = PROCESSES_DATA.find(p => p.id === treatmentC) || PROCESSES_DATA[0];
+
+      // Comparison Quantitative Metrics Map
+      const metrics = {
+        'full-annealing': { hardness: 15, strength: 480, toughness: 95, distortion: 10, cost: 2 },
+        'normalizing':    { hardness: 25, strength: 650, toughness: 80, distortion: 25, cost: 1 },
+        'spheroidizing':  { hardness: 12, strength: 420, toughness: 90, distortion: 15, cost: 4 },
+        'quenching':      { hardness: 64, strength: 2100, toughness: 10, distortion: 90, cost: 2 },
+        'tempering':      { hardness: 45, strength: 1450, toughness: 75, distortion: 30, cost: 3 },
+        'austempering':   { hardness: 52, strength: 1750, toughness: 85, distortion: 20, cost: 4 },
+        'martempering':   { hardness: 58, strength: 1900, toughness: 50, distortion: 30, cost: 4 },
+        'case-hardening': { hardness: 62, strength: 1600, toughness: 70, distortion: 45, cost: 5 }
+      };
+
+      const mA = metrics[procA.id];
+      const mB = metrics[procB.id];
+      const mC = metrics[procC.id];
+
+      return (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+          
+          <div className="border-b border-steel-800 pb-4">
+            <h1 className="font-display text-3xl sm:text-4xl font-bold uppercase tracking-wider text-white flex items-center gap-2">
+              <Icons.Compare /> Process Comparison Matrix
+            </h1>
+            <p className="text-steel-400 text-xs sm:text-sm mt-1">
+              Side-by-side trade-off analysis of mechanical properties, quench severity, cracking distortion hazards, and relative economic costs.
+            </p>
+
+            {/* Treatment Pickers */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+              {[
+                { label: 'Treatment 1', val: treatmentA, setter: setTreatmentA, color: 'text-furnace-flame' },
+                { label: 'Treatment 2', val: treatmentB, setter: setTreatmentB, color: 'text-quench-400' },
+                { label: 'Treatment 3', val: treatmentC, setter: setTreatmentC, color: 'text-emerald-400' }
+              ].map((pick, i) => (
+                <div key={i} className="p-3 rounded bg-charcoal-850 border border-steel-800">
+                  <label className={`block text-xs font-mono font-bold mb-1.5 ${pick.color}`}>{pick.label}</label>
+                  <select
+                    value={pick.val}
+                    onChange={(e) => pick.setter(e.target.value)}
+                    className="w-full bg-charcoal-900 border border-steel-700 text-white rounded p-2 text-xs font-mono focus:ring-furnace-amber"
+                  >
+                    {PROCESSES_DATA.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Comparative Bar Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            {/* Hardness & Tensile Strength Comparison */}
+            <div className="p-6 rounded-lg bg-charcoal-850 border border-steel-800 space-y-5">
+              <h3 className="font-mono text-xs uppercase tracking-wider text-steel-300 font-bold">
+                Hardness (HRC) Comparison
+              </h3>
+              
+              <div className="space-y-4">
+                {[
+                  { name: procA.name, val: mA.hardness, color: 'bg-furnace-flame' },
+                  { name: procB.name, val: mB.hardness, color: 'bg-quench-400' },
+                  { name: procC.name, val: mC.hardness, color: 'bg-emerald-400' }
+                ].map((item, idx) => (
+                  <div key={idx} className="space-y-1">
+                    <div className="flex justify-between text-xs font-mono">
+                      <span className="text-white font-medium">{item.name}</span>
+                      <span className="font-bold">{item.val} HRC</span>
+                    </div>
+                    <div className="w-full h-3 rounded bg-charcoal-900 overflow-hidden">
+                      <div
+                        className={`h-full ${item.color} transition-all duration-500`}
+                        style={{ width: `${(item.val / 70) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <h3 className="font-mono text-xs uppercase tracking-wider text-steel-300 font-bold pt-4 border-t border-steel-800">
+                Tensile Strength (MPa)
+              </h3>
+              <div className="space-y-4">
+                {[
+                  { name: procA.name, val: mA.strength, color: 'bg-furnace-flame' },
+                  { name: procB.name, val: mB.strength, color: 'bg-quench-400' },
+                  { name: procC.name, val: mC.strength, color: 'bg-emerald-400' }
+                ].map((item, idx) => (
+                  <div key={idx} className="space-y-1">
+                    <div className="flex justify-between text-xs font-mono">
+                      <span className="text-white font-medium">{item.name}</span>
+                      <span className="font-bold">{item.val} MPa</span>
+                    </div>
+                    <div className="w-full h-3 rounded bg-charcoal-900 overflow-hidden">
+                      <div
+                        className={`h-full ${item.color} transition-all duration-500`}
+                        style={{ width: `${(item.val / 2200) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Toughness vs Distortion & Cost */}
+            <div className="p-6 rounded-lg bg-charcoal-850 border border-steel-800 space-y-5">
+              <h3 className="font-mono text-xs uppercase tracking-wider text-steel-300 font-bold">
+                Impact Toughness & Ductility Rating (0–100)
+              </h3>
+              <div className="space-y-4">
+                {[
+                  { name: procA.name, val: mA.toughness, color: 'bg-furnace-flame' },
+                  { name: procB.name, val: mB.toughness, color: 'bg-quench-400' },
+                  { name: procC.name, val: mC.toughness, color: 'bg-emerald-400' }
+                ].map((item, idx) => (
+                  <div key={idx} className="space-y-1">
+                    <div className="flex justify-between text-xs font-mono">
+                      <span className="text-white font-medium">{item.name}</span>
+                      <span className="font-bold">{item.val}/100</span>
+                    </div>
+                    <div className="w-full h-3 rounded bg-charcoal-900 overflow-hidden">
+                      <div
+                        className={`h-full ${item.color} transition-all duration-500`}
+                        style={{ width: `${item.val}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <h3 className="font-mono text-xs uppercase tracking-wider text-steel-300 font-bold pt-4 border-t border-steel-800">
+                Quench Cracking & Distortion Hazard (0–100)
+              </h3>
+              <div className="space-y-4">
+                {[
+                  { name: procA.name, val: mA.distortion, color: 'bg-furnace-flame' },
+                  { name: procB.name, val: mB.distortion, color: 'bg-quench-400' },
+                  { name: procC.name, val: mC.distortion, color: 'bg-emerald-400' }
+                ].map((item, idx) => (
+                  <div key={idx} className="space-y-1">
+                    <div className="flex justify-between text-xs font-mono">
+                      <span className="text-white font-medium">{item.name}</span>
+                      <span className="font-bold">{item.val} %</span>
+                    </div>
+                    <div className="w-full h-3 rounded bg-charcoal-900 overflow-hidden">
+                      <div
+                        className={`h-full ${item.color} transition-all duration-500`}
+                        style={{ width: `${item.val}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
+
+          {/* Deep Side-by-Side Comparison Table */}
+          <div className="overflow-x-auto rounded-lg border border-steel-800 bg-charcoal-850">
+            <table className="w-full text-left text-xs font-mono">
+              <thead className="bg-charcoal-950 text-steel-400 uppercase border-b border-steel-800">
+                <tr>
+                  <th className="p-3 w-1/4">Parameter</th>
+                  <th className="p-3 text-furnace-flame font-bold w-1/4">{procA.name}</th>
+                  <th className="p-3 text-quench-400 font-bold w-1/4">{procB.name}</th>
+                  <th className="p-3 text-emerald-400 font-bold w-1/4">{procC.name}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-steel-800/60">
+                <tr>
+                  <td className="p-3 text-steel-400 font-bold">Category</td>
+                  <td className="p-3 text-white">{procA.category}</td>
+                  <td className="p-3 text-white">{procB.category}</td>
+                  <td className="p-3 text-white">{procC.category}</td>
+                </tr>
+                <tr>
+                  <td className="p-3 text-steel-400 font-bold">Temperature Window</td>
+                  <td className="p-3 text-white">{procA.tempRange}</td>
+                  <td className="p-3 text-white">{procB.tempRange}</td>
+                  <td className="p-3 text-white">{procC.tempRange}</td>
+                </tr>
+                <tr>
+                  <td className="p-3 text-steel-400 font-bold">Cooling Method</td>
+                  <td className="p-3 text-white">{procA.coolingMethod}</td>
+                  <td className="p-3 text-white">{procB.coolingMethod}</td>
+                  <td className="p-3 text-white">{procC.coolingMethod}</td>
+                </tr>
+                <tr>
+                  <td className="p-3 text-steel-400 font-bold">Resulting Microstructure</td>
+                  <td className="p-3 text-furnace-gold font-bold">{procA.resultingStructure}</td>
+                  <td className="p-3 text-furnace-gold font-bold">{procB.resultingStructure}</td>
+                  <td className="p-3 text-furnace-gold font-bold">{procC.resultingStructure}</td>
+                </tr>
+                <tr>
+                  <td className="p-3 text-steel-400 font-bold">Typical Hardness</td>
+                  <td className="p-3 text-white">{procA.hardnessRange}</td>
+                  <td className="p-3 text-white">{procB.hardnessRange}</td>
+                  <td className="p-3 text-white">{procC.hardnessRange}</td>
+                </tr>
+                <tr>
+                  <td className="p-3 text-steel-400 font-bold">Relative Cost</td>
+                  <td className="p-3 text-white">{'★'.repeat(mA.cost) + '☆'.repeat(5 - mA.cost)}</td>
+                  <td className="p-3 text-white">{'★'.repeat(mB.cost) + '☆'.repeat(5 - mB.cost)}</td>
+                  <td className="p-3 text-white">{'★'.repeat(mC.cost) + '☆'.repeat(5 - mC.cost)}</td>
+                </tr>
+                <tr>
+                  <td className="p-3 text-steel-400 font-bold">Primary Application</td>
+                  <td className="p-3 text-steel-300">{procA.applications}</td>
+                  <td className="p-3 text-steel-300">{procB.applications}</td>
+                  <td className="p-3 text-steel-300">{procC.applications}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      );
+    }
+
+    /**
+     * PAGE 6: QUIZ (#/quiz)
+     */
+    function QuizPage() {
+      // Shuffled selection of 10 questions from the 15-question bank
+      const [questions, setQuestions] = React.useState([]);
+      const [currentIndex, setCurrentIndex] = React.useState(0);
+      const [selectedChoice, setSelectedChoice] = React.useState(null);
+      const [isAnswered, setIsAnswered] = React.useState(false);
+      const [userAnswers, setUserAnswers] = React.useState([]); // records { qIndex, choice, isCorrect }
+      const [quizCompleted, setQuizCompleted] = React.useState(false);
+      const [candidateName, setCandidateName] = React.useState('Metallurgy Specialist');
+
+      // Initialize / Reset Quiz
+      const initQuiz = React.useCallback(() => {
+        // Shuffle and pick 10
+        const shuffled = [...QUIZ_QUESTIONS].sort(() => 0.5 - Math.random()).slice(0, 10);
+        setQuestions(shuffled);
+        setCurrentIndex(0);
+        setSelectedChoice(null);
+        setIsAnswered(false);
+        setUserAnswers([]);
+        setQuizCompleted(false);
+      }, []);
+
+      React.useEffect(() => {
+        initQuiz();
+      }, [initQuiz]);
+
+      if (questions.length === 0) return null;
+
+      const currentQ = questions[currentIndex];
+      const score = userAnswers.filter(a => a.isCorrect).length;
+
+      function handleSelectOption(idx) {
+        if (!isAnswered) {
+          setSelectedChoice(idx);
+        }
+      }
+
+      function handleConfirmAnswer() {
+        if (selectedChoice === null || isAnswered) return;
+        const isCorrect = selectedChoice === currentQ.correctIndex;
+        setIsAnswered(true);
+        setUserAnswers([...userAnswers, { question: currentQ, choice: selectedChoice, isCorrect }]);
+      }
+
+      function handleNextQuestion() {
+        if (currentIndex + 1 < questions.length) {
+          setCurrentIndex(currentIndex + 1);
+          setSelectedChoice(null);
+          setIsAnswered(false);
+        } else {
+          setQuizCompleted(true);
+        }
+      }
+
+      // Quiz Result Tier
+      const percentage = Math.round((score / questions.length) * 100);
+      let tier = 'Apprentice Metallurgist';
+      let tierColor = 'text-steel-400';
+      if (percentage >= 90) {
+        tier = 'Master Heat Treating Engineer';
+        tierColor = 'text-furnace-gold';
+      } else if (percentage >= 70) {
+        tier = 'Certified Thermal Process Specialist';
+        tierColor = 'text-emerald-400';
+      } else if (percentage >= 50) {
+        tier = 'Journeyman Heat Treater';
+        tierColor = 'text-quench-400';
+      }
+
+      return (
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+          
+          <div className="border-b border-steel-800 pb-4 flex items-center justify-between">
+            <div>
+              <h1 className="font-display text-3xl sm:text-4xl font-bold uppercase tracking-wider text-white flex items-center gap-2">
+                <Icons.Quiz /> Metallurgical Certification Quiz
+              </h1>
+              <p className="text-steel-400 text-xs sm:text-sm mt-1">
+                Validate your expertise on phase diagrams, diffusion kinetics, martensite transformation, and quench media.
+              </p>
+            </div>
+            {!quizCompleted && (
+              <div className="text-right font-mono text-xs">
+                <span className="text-steel-500">Progress:</span>
+                <div className="text-white font-bold">{currentIndex + 1} / {questions.length}</div>
+              </div>
+            )}
+          </div>
+
+          {!quizCompleted ? (
+            <div className="space-y-6">
+              
+              {/* Progress Bar */}
+              <div className="w-full h-2 rounded bg-charcoal-800 overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-furnace-red via-furnace-amber to-furnace-gold transition-all duration-300"
+                  style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
+                />
+              </div>
+
+              {/* Question Card */}
+              <div className="p-6 sm:p-8 rounded-lg bg-charcoal-850 border border-steel-800 space-y-6 shadow-xl">
+                
+                <div className="flex items-center justify-between text-xs font-mono">
+                  <span className="px-2.5 py-1 rounded bg-charcoal-900 text-furnace-amber border border-steel-800 font-bold">
+                    {currentQ.category}
+                  </span>
+                  <span className="text-steel-500">Current Score: {score}</span>
+                </div>
+
+                <h2 className="text-base sm:text-lg font-semibold text-white leading-relaxed">
+                  {currentQ.question}
+                </h2>
+
+                {/* Option Choices */}
+                <div className="space-y-3" role="radiogroup">
+                  {currentQ.options.map((opt, idx) => {
+                    let btnStyle = 'bg-charcoal-900 border-steel-750 text-steel-200 hover:border-steel-600';
+                    
+                    if (isAnswered) {
+                      if (idx === currentQ.correctIndex) {
+                        btnStyle = 'bg-emerald-950/60 border-emerald-500 text-emerald-200 font-bold';
+                      } else if (idx === selectedChoice) {
+                        btnStyle = 'bg-red-950/60 border-red-500 text-red-200';
+                      } else {
+                        btnStyle = 'bg-charcoal-900/40 border-steel-850 text-steel-500 opacity-60';
+                      }
+                    } else if (selectedChoice === idx) {
+                      btnStyle = 'bg-charcoal-800 border-furnace-amber text-furnace-amber font-semibold';
+                    }
+
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        disabled={isAnswered}
+                        onClick={() => handleSelectOption(idx)}
+                        className={`w-full p-4 rounded-lg border text-left text-sm transition-all flex items-start gap-3 ${btnStyle}`}
+                      >
+                        <span className="w-6 h-6 rounded-full border border-current flex items-center justify-center text-xs font-mono flex-shrink-0 mt-0.5">
+                          {String.fromCharCode(65 + idx)}
+                        </span>
+                        <span className="leading-snug">{opt}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Action Button: Confirm or Next */}
+                <div className="pt-4 border-t border-steel-800 flex items-center justify-between">
+                  <span className="text-xs font-mono text-steel-500">
+                    {!isAnswered ? 'Select an answer above' : 'Review explanation below'}
+                  </span>
+
+                  {!isAnswered ? (
+                    <button
+                      type="button"
+                      disabled={selectedChoice === null}
+                      onClick={handleConfirmAnswer}
+                      className="px-6 py-2.5 rounded bg-furnace-amber text-charcoal-950 font-bold text-xs uppercase tracking-wider hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    >
+                      Submit Answer
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleNextQuestion}
+                      className="px-6 py-2.5 rounded bg-gradient-to-r from-furnace-red via-furnace-flame to-furnace-amber text-charcoal-950 font-bold text-xs uppercase tracking-wider hover:brightness-110 transition-all flex items-center gap-1.5"
+                    >
+                      {currentIndex + 1 < questions.length ? 'Next Question' : 'View Final Results'} <Icons.ArrowRight />
+                    </button>
+                  )}
+                </div>
+
+                {/* Instant Scientific Explanation Box */}
+                {isAnswered && (
+                  <div className={`p-4 rounded-lg text-xs leading-relaxed border ${
+                    selectedChoice === currentQ.correctIndex
+                      ? 'bg-emerald-950/40 border-emerald-800 text-emerald-200'
+                      : 'bg-red-950/40 border-red-800 text-red-200'
+                  }`}>
+                    <div className="font-mono font-bold uppercase mb-1 flex items-center gap-1.5">
+                      {selectedChoice === currentQ.correctIndex ? (
+                        <span className="text-emerald-400">✓ Correct Assessment</span>
+                      ) : (
+                        <span className="text-red-400">✗ Incorrect Assessment</span>
+                      )}
+                    </div>
+                    <p className="text-steel-200 mt-1">{currentQ.explanation}</p>
+                  </div>
+                )}
+
+              </div>
+
+            </div>
+          ) : (
+            /* COMPLETION & CERTIFICATE VIEW */
+            <div className="space-y-8">
+              
+              {/* Score Summary Card */}
+              <div className="p-8 rounded-lg bg-charcoal-850 border border-steel-800 text-center space-y-4 shadow-2xl">
+                <div className="w-16 h-16 rounded-full bg-furnace-flame/20 text-furnace-amber mx-auto flex items-center justify-center">
+                  <Icons.Quiz />
+                </div>
+                <h2 className="font-display text-3xl font-bold uppercase text-white">
+                  Metallurgical Assessment Complete
+                </h2>
+                <div className="font-mono text-5xl font-extrabold text-white">
+                  {score} <span className="text-2xl text-steel-500 font-normal">/ {questions.length}</span>
+                </div>
+                <div className={`font-mono text-sm uppercase tracking-wider font-bold ${tierColor}`}>
+                  Attained Rating: {tier} ({percentage}%)
+                </div>
+                <p className="text-xs text-steel-400 max-w-md mx-auto leading-relaxed">
+                  {percentage >= 70
+                    ? 'Outstanding! You have demonstrated comprehensive understanding of steel thermal kinetics, phase transformations, and microstructure control.'
+                    : 'Good attempt. Review the scientific references and glossary to master the thermodynamics of austenitizing and quench media.'}
+                </p>
+
+                <div className="pt-4 flex flex-wrap justify-center gap-4">
+                  <button
+                    type="button"
+                    onClick={initQuiz}
+                    className="px-6 py-2.5 rounded bg-charcoal-800 border border-steel-700 text-steel-200 text-xs font-mono hover:text-white hover:bg-steel-750 transition-colors flex items-center gap-1"
+                  >
+                    <Icons.RotateCcw /> Retake Quiz (New Question Draw)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="px-6 py-2.5 rounded bg-furnace-amber text-charcoal-950 font-bold text-xs uppercase tracking-wider hover:brightness-110 transition-colors"
+                  >
+                    Print Official Certificate
+                  </button>
+                </div>
+              </div>
+
+              {/* Printable Certificate Template */}
+              <div id="certificate-modal" className="p-8 sm:p-12 rounded-xl bg-charcoal-950 border-4 border-steel-750 relative overflow-hidden shadow-2xl text-center space-y-6">
+                <div className="absolute inset-0 bg-grid-pattern opacity-10 pointer-events-none" />
+                
+                <div className="border-b border-steel-800 pb-4">
+                  <div className="font-mono text-xs uppercase tracking-widest text-furnace-gold font-bold mb-1">
+                    CERTIFICATE OF COMPETENCY
+                  </div>
+                  <h3 className="font-display text-3xl sm:text-4xl font-bold uppercase text-white">
+                    FERROUS METALLURGY & HEAT TREATMENT
+                  </h3>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-xs font-mono text-steel-400 uppercase">This document certifies that</p>
+                  <input
+                    type="text"
+                    value={candidateName}
+                    onChange={(e) => setCandidateName(e.target.value)}
+                    className="text-center font-display text-2xl sm:text-3xl font-bold text-furnace-amber bg-transparent border-b border-steel-700 focus:border-furnace-amber focus:outline-none px-4 py-1 max-w-md mx-auto"
+                    title="Click to customize candidate name"
+                  />
+                  <p className="text-xs text-steel-300 max-w-lg mx-auto pt-2">
+                    has successfully completed the formal academic assessment in iron-carbon phase diagrams, austenitizing kinetics, quench severity, and tempered martensite metallurgy.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4 pt-4 border-t border-steel-800 text-xs font-mono">
+                  <div>
+                    <span className="block text-steel-500">SCORE</span>
+                    <span className="font-bold text-white text-sm">{percentage}% ({score}/10)</span>
+                  </div>
+                  <div>
+                    <span className="block text-steel-500">HONOR TIER</span>
+                    <span className="font-bold text-furnace-gold text-sm">{tier}</span>
+                  </div>
+                  <div>
+                    <span className="block text-steel-500">DATE ISSUED</span>
+                    <span className="font-bold text-white text-sm">{new Date().toISOString().split('T')[0]}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Question Review Section */}
+              <div className="space-y-4">
+                <h3 className="font-mono text-xs uppercase tracking-wider text-steel-400 font-bold">
+                  Detailed Answer Review:
+                </h3>
+                {userAnswers.map((item, idx) => (
+                  <div key={idx} className="p-4 rounded-lg bg-charcoal-850 border border-steel-800 text-xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono font-bold text-steel-400">Question {idx + 1}</span>
+                      <span className={item.isCorrect ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>
+                        {item.isCorrect ? '✓ Correct' : '✗ Incorrect'}
+                      </span>
+                    </div>
+                    <p className="text-white font-medium">{item.question.question}</p>
+                    <div className="text-steel-400">
+                      Your answer: <span className={item.isCorrect ? 'text-emerald-300' : 'text-red-300'}>{item.question.options[item.choice]}</span>
+                    </div>
+                    {!item.isCorrect && (
+                      <div className="text-emerald-400">
+                        Correct answer: <strong>{item.question.options[item.question.correctIndex]}</strong>
+                      </div>
+                    )}
+                    <p className="text-steel-500 pt-1 border-t border-steel-800/60 leading-relaxed">
+                      {item.question.explanation}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+            </div>
+          )}
+
+        </div>
+      );
+    }
+
+    /**
+     * PAGE 7: ABOUT & REFERENCE (#/about)
+     */
+    function AboutPage() {
+      const [searchQuery, setSearchQuery] = React.useState('');
+
+      const filteredGlossary = GLOSSARY_TERMS.filter(item =>
+        item.term.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.def.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+
+      return (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+          
+          <div className="border-b border-steel-800 pb-4">
+            <h1 className="font-display text-3xl sm:text-4xl font-bold uppercase tracking-wider text-white flex items-center gap-2">
+              <Icons.Book /> Metallurgical References & Theory
+            </h1>
+            <p className="text-steel-400 text-xs sm:text-sm mt-1">
+              Scientific foundations of the Iron-Carbon (Fe-Fe₃C) phase diagram, TTT/CCT transformation curves, ASTM standards, and simulator extension architecture.
+            </p>
+          </div>
+
+          {/* Section 1: Fe-Fe3C Equilibrium Fundamentals */}
+          <section className="space-y-4">
+            <h2 className="font-display text-2xl font-bold uppercase text-white tracking-wide flex items-center gap-2">
+              <span className="w-3 h-3 bg-furnace-flame rounded-full"></span>
+              1. Fe-Fe₃C Phase Diagram Benchmarks
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs font-mono">
+              <div className="p-4 rounded bg-charcoal-850 border border-steel-800 space-y-1.5">
+                <span className="text-furnace-gold font-bold text-sm block">A1 Eutectoid Line (727°C)</span>
+                <p className="text-steel-300 leading-relaxed font-sans">
+                  The isothermal reaction line at 727°C where homogeneous austenite containing 0.76 wt% Carbon decomposes into Pearlite (88% α-Ferrite + 12% Cementite).
+                </p>
+              </div>
+              <div className="p-4 rounded bg-charcoal-850 border border-steel-800 space-y-1.5">
+                <span className="text-furnace-amber font-bold text-sm block">A3 Critical Line (912°C → 727°C)</span>
+                <p className="text-steel-300 leading-relaxed font-sans">
+                  The upper transformation boundary for hypoeutectoid steels (&lt;0.76% C). Above A3, ferrite transforms completely into single-phase FCC Austenite (γ).
+                </p>
+              </div>
+              <div className="p-4 rounded bg-charcoal-850 border border-steel-800 space-y-1.5">
+                <span className="text-furnace-red font-bold text-sm block">Acm Boundary (727°C → 1147°C)</span>
+                <p className="text-steel-300 leading-relaxed font-sans">
+                  The solubility limit of carbon in austenite for hypereutectoid steels (&gt;0.76% C), terminating at the eutectic point (4.30% C at 1147°C).
+                </p>
+              </div>
+              <div className="p-4 rounded bg-charcoal-850 border border-steel-800 space-y-1.5">
+                <span className="text-quench-400 font-bold text-sm block">Ferrite Carbon Solubility</span>
+                <p className="text-steel-300 leading-relaxed font-sans">
+                  Maximum solubility is strictly 0.022 wt% C at 727°C, dropping to ~0.008 wt% at room temperature due to the tight, distorted BCC interstitial holes.
+                </p>
+              </div>
+              <div className="p-4 rounded bg-charcoal-850 border border-steel-800 space-y-1.5">
+                <span className="text-quench-400 font-bold text-sm block">Austenite Carbon Solubility</span>
+                <p className="text-steel-300 leading-relaxed font-sans">
+                  Maximum solubility reaches 2.14 wt% C at 1147°C (0.76% C at 727°C) inside the larger, symmetrical FCC octahedral voids.
+                </p>
+              </div>
+              <div className="p-4 rounded bg-charcoal-850 border border-steel-800 space-y-1.5">
+                <span className="text-emerald-400 font-bold text-sm block">Stoichiometric Cementite (Fe₃C)</span>
+                <p className="text-steel-300 leading-relaxed font-sans">
+                  Contains exactly 6.67 wt% Carbon. An intermetallic orthorhombic compound with exceptional hardness (&gt;800 HV) and near-zero room temp ductility.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Section 2: TTT vs CCT Transformation Kinetics */}
+          <section className="space-y-4">
+            <h2 className="font-display text-2xl font-bold uppercase text-white tracking-wide flex items-center gap-2">
+              <span className="w-3 h-3 bg-quench-400 rounded-full"></span>
+              2. TTT & CCT Transformation Kinetics
+            </h2>
+            <div className="p-6 rounded-lg bg-charcoal-850 border border-steel-800 space-y-4 text-xs font-sans text-steel-300 leading-relaxed">
+              <p>
+                <strong>Time-Temperature-Transformation (TTT) Diagrams:</strong> Measure isothermal phase kinetics when steel is quenched rapidly into a constant-temperature bath and held. The characteristic "C-curve" nose (~550°C) represents the fastest rate of pearlite formation where thermodynamic driving force (undercooling) balances atomic carbon diffusivity.
+              </p>
+              <p>
+                <strong>Continuous Cooling Transformation (CCT) Diagrams:</strong> More representative of industrial quenching where temperature drops continuously. Because cooling through higher temperatures modifies transformation incubation times, the transformation noses on CCT diagrams are shifted downward and to the right (longer times) relative to isothermal TTT curves.
+              </p>
+              <p>
+                <strong>Critical Cooling Rate (CCR):</strong> The minimum slope of continuous cooling that grazes the nose of the CCT curve without intersecting pearlite or bainite formation regions, resulting in 100% martensite.
+              </p>
+            </div>
+          </section>
+
+          {/* Section 3: Engineering Standards & Citations */}
+          <section className="space-y-4">
+            <h2 className="font-display text-2xl font-bold uppercase text-white tracking-wide flex items-center gap-2">
+              <span className="w-3 h-3 bg-emerald-400 rounded-full"></span>
+              3. Standards & Authoritative References
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-mono">
+              <div className="p-4 rounded bg-charcoal-850 border border-steel-800">
+                <span className="text-white font-bold block mb-1">ASM Handbook Vol. 4</span>
+                <span className="text-steel-400 block text-[11px] mb-2">Heat Treating (ASM International)</span>
+                <p className="text-steel-500 font-sans leading-relaxed">
+                  The definitive worldwide compendium on furnace atmospheres, quench media heat-transfer coefficients, and alloy steel tempering curves.
+                </p>
+              </div>
+              <div className="p-4 rounded bg-charcoal-850 border border-steel-800">
+                <span className="text-white font-bold block mb-1">ASTM A255</span>
+                <span className="text-steel-400 block text-[11px] mb-2">Standard Test for Hardenability of Steel</span>
+                <p className="text-steel-500 font-sans leading-relaxed">
+                  Defines the standardized Jominy end-quench geometry, water flow rates (1/2" orifice, 2.5" water column), and Rockwell C measurement intervals.
+                </p>
+              </div>
+              <div className="p-4 rounded bg-charcoal-850 border border-steel-800">
+                <span className="text-white font-bold block mb-1">ASTM E112</span>
+                <span className="text-steel-400 block text-[11px] mb-2">Methods for Determining Average Grain Size</span>
+                <p className="text-steel-500 font-sans leading-relaxed">
+                  Specifies comparison charts, intercept counts, and planimetric methods for characterizing prior austenite grain boundaries and Hall-Petch parameters.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Section 4: Interactive Metallurgy Glossary */}
+          <section className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <h2 className="font-display text-2xl font-bold uppercase text-white tracking-wide flex items-center gap-2">
+                <span className="w-3 h-3 bg-purple-400 rounded-full"></span>
+                4. Metallurgical Lexicon & Glossary
+              </h2>
+              <div className="w-full sm:w-64">
+                <input
+                  type="text"
+                  placeholder="Filter terms..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-charcoal-900 border border-steel-750 text-white rounded px-3 py-1.5 text-xs font-mono focus:border-furnace-amber focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              {filteredGlossary.map((g, i) => (
+                <div key={i} className="p-3 rounded bg-charcoal-850 border border-steel-800 space-y-1">
+                  <span className="font-mono font-bold text-furnace-gold">{g.term}</span>
+                  <p className="text-steel-300 leading-relaxed font-sans">{g.def}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Section 5: How to Extend the Simulator */}
+          <section className="p-6 rounded-lg bg-charcoal-850 border border-steel-800 space-y-3 font-mono text-xs">
+            <h2 className="font-display text-xl font-bold uppercase text-white tracking-wide font-sans">
+              Developer Guide: How to Extend the Simulator
+            </h2>
+            <p className="text-steel-400 font-sans leading-relaxed">
+              This application was engineered with a modular single-file architecture. To integrate advanced finite element solvers, alloy additions (Cr, Mo, Ni, V), or continuous CCT kinetics:
+            </p>
+            <ol className="list-decimal list-inside space-y-1 text-steel-300">
+              <li>Open <code className="text-furnace-amber">index.html</code> in any text or code editor.</li>
+              <li>Locate the code comment banner: <code className="text-furnace-gold">// &gt;&gt;&gt; SIMULATOR EXTENSION POINT &lt;&lt;&lt;</code> inside the Simulator page component.</li>
+              <li>Add custom state hooks (e.g. <code className="text-steel-200">const [alloyMo, setAlloyMo] = React.useState(0.25)</code>).</li>
+              <li>Incorporate empirical Andrews or Grange equations for alloy-adjusted Ms (<code className="text-steel-200">Ms = 539 - 423C - 30.4Mn - 12.1Cr...</code>).</li>
+              <li>Save and refresh the browser. No node builds, transpilations, or npm dependencies required!</li>
+            </ol>
+          </section>
+
+        </div>
+      );
+    }
+
+    /**
+     * 404 NOT FOUND FALLBACK PAGE
+     */
+    function NotFoundPage() {
+      return (
+        <div className="max-w-2xl mx-auto px-4 py-24 text-center space-y-6">
+          <div className="w-16 h-16 rounded-full bg-furnace-red/20 text-furnace-red mx-auto flex items-center justify-center">
+            <Icons.Alert />
+          </div>
+          <h1 className="font-display text-5xl font-bold uppercase text-white tracking-wider">
+            404 — PHASE NOT FOUND
+          </h1>
+          <p className="text-steel-300 font-mono text-sm leading-relaxed">
+            The requested thermal coordinates do not exist in the Fe-Fe₃C phase diagram or have vaporized due to furnace overheating.
+          </p>
+          <div>
+            <a
+              href="#/home"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded bg-furnace-amber text-charcoal-950 font-bold text-xs uppercase tracking-wider hover:brightness-110 transition-colors"
+            >
+              <Icons.Home /> Return to Furnace Hearth (#/home)
+            </a>
+          </div>
+        </div>
+      );
+    }
+  </script>
+
+<!-- ROUTER + APP -->
+  <script type="text/babel">
+    /**
+     * Custom Hash Router & Root Application Component
+     */
+    function App() {
+      // Initialize route from window.location.hash or fallback to #/home
+      const [currentRoute, setCurrentRoute] = React.useState(() => {
+        const hash = window.location.hash;
+        return hash || '#/home';
+      });
+
+      // Hash change listener with scroll-to-top behavior
+      React.useEffect(() => {
+        function handleHashChange() {
+          const newHash = window.location.hash || '#/home';
+          setCurrentRoute(newHash);
+          // Accessible scroll-to-top on route navigation
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // If no hash present, set to #/home without adding history entry
+        if (!window.location.hash) {
+          window.location.replace('#/home');
+        }
+
+        window.addEventListener('hashchange', handleHashChange);
+        return () => window.removeEventListener('hashchange', handleHashChange);
+      }, []);
+
+      // Route View Dispatcher
+      function renderActivePage() {
+        switch (currentRoute) {
+          case '#/home':
+          case '':
+            return <HomePage />;
+          case '#/simulator':
+            return <SimulatorPage />;
+          case '#/processes':
+            return <ProcessesPage />;
+          case '#/microstructure':
+            return <MicrostructurePage />;
+          case '#/compare':
+            return <ComparePage />;
+          case '#/quiz':
+            return <QuizPage />;
+          case '#/about':
+            return <AboutPage />;
+          default:
+            return <NotFoundPage />;
+        }
+      }
+
+      return (
+        <div className="flex flex-col min-h-screen">
+          <Navbar currentRoute={currentRoute} />
+          
+          <main id="main-content" className="flex-grow focus:outline-none" tabIndex={-1}>
+            {renderActivePage()}
+          </main>
+
+          <Footer />
+        </div>
+      );
+    }
+
+    // Mount the React Application
+    const container = document.getElementById('root');
+    const root = ReactDOM.createRoot(container);
+    root.render(<App />);
+  </script>
+
+</body>
+</html>
